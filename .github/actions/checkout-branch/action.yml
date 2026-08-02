@@ -38,4 +38,4 @@ runs:
           fi
           BRANCH_EXISTS=true
         fi
-        echo "BRANCH_EXISTS=${BRANCH_EXISTS}" >> $GITHUB_OUTPUT
+        echo "BRANCH_EXISTS=${BRANCH_EXISTS}" >> "$GITHUB_OUTPUT"
