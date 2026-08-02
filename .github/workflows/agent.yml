@@ -47,6 +47,21 @@ jobs:
           project-slug: "agent-editor"                        # "agents"
           env-slug: "dev"
 
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        env:
+          GITHUB_APP_AGENT_HELPER_CLIENT_ID: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
+          GITHUB_APP_AGENT_HELPER_PRIVATE_KEY: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
+        with:
+          client-id: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
+          private-key: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
       - name: Authenticate
         id: authenticate
         uses: ./.github/actions/authenticate
@@ -176,6 +191,21 @@ jobs:
           project-slug: "agent-editor"                        # "agents"
           env-slug: "dev"
 
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        env:
+          GITHUB_APP_AGENT_HELPER_CLIENT_ID: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
+          GITHUB_APP_AGENT_HELPER_PRIVATE_KEY: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
+        with:
+          client-id: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
+          private-key: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
       - name: Authenticate
         id: authenticate
         uses: ./.github/actions/authenticate
@@ -205,6 +235,21 @@ jobs:
           identity-id: "29578305-c46a-4ccd-a428-549edac4c3a2" # "c603d49b-292c-42ae-b838-52e03e3c3a84"
           project-slug: "agent-editor"                        # "agents"
           env-slug: "dev"
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        env:
+          GITHUB_APP_AGENT_HELPER_CLIENT_ID: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
+          GITHUB_APP_AGENT_HELPER_PRIVATE_KEY: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
+        with:
+          client-id: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
+          private-key: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Authenticate
         id: authenticate
@@ -247,6 +292,21 @@ jobs:
           identity-id: "29578305-c46a-4ccd-a428-549edac4c3a2" # "c603d49b-292c-42ae-b838-52e03e3c3a84"
           project-slug: "agent-editor"                        # "agents"
           env-slug: "dev"
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        env:
+          GITHUB_APP_AGENT_HELPER_CLIENT_ID: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
+          GITHUB_APP_AGENT_HELPER_PRIVATE_KEY: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
+        with:
+          client-id: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
+          private-key: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Authenticate
         id: authenticate
