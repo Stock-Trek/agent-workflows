@@ -424,10 +424,6 @@ jobs:
         id: check-for-code-changes
         if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
         run: |
-          ISSUE_BRANCH="${{ needs.triage.outputs.issue-branch }}"
-          ISSUE_BRANCH_BASE="${{ needs.triage.outputs.issue-branch-base }}"
-          # Detect local changes first as it is fast and avoids unnecessary
-          # network calls to fetch and compare remote branches.
           HAS_LOCAL_CHANGES=false
           if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
             HAS_LOCAL_CHANGES=true
@@ -436,13 +432,10 @@ jobs:
             echo "has-changes=true" >> $GITHUB_OUTPUT
             exit 0
           fi
-          # No local changes, so fetch the latest state of the remote branches
-          # to detect committed but unpushed changes (the agent may commit
-          # before this step).
+          ISSUE_BRANCH="${{ needs.triage.outputs.issue-branch }}"
+          ISSUE_BRANCH_BASE="${{ needs.triage.outputs.issue-branch-base }}"
           git fetch origin "$ISSUE_BRANCH" 2>/dev/null || true
           git fetch origin "$ISSUE_BRANCH_BASE" 2>/dev/null || true
-          # Compare against the remote branch if it exists, otherwise against
-          # the base branch, so that committed changes are also detected.
           if git rev-parse --verify "origin/$ISSUE_BRANCH" >/dev/null 2>&1; then
             REFERENCE="origin/$ISSUE_BRANCH"
           elif git rev-parse --verify "origin/$ISSUE_BRANCH_BASE" >/dev/null 2>&1; then
@@ -451,10 +444,11 @@ jobs:
             REFERENCE="HEAD"
           fi
           if ! git diff --quiet HEAD "$REFERENCE"; then
-            echo "has-changes=true" >> $GITHUB_OUTPUT
+            HAS_LOCAL_CHANGES=true
           else
-            echo "has-changes=false" >> $GITHUB_OUTPUT
+            HAS_LOCAL_CHANGES=false
           fi
+          echo "has-changes=${HAS_LOCAL_CHANGES}" >> $GITHUB_OUTPUT
       - name: Commit and push code changes
         if: (steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY')
         run: |
