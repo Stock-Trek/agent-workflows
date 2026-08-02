@@ -507,3 +507,62 @@ jobs:
               repo: context.repo.repo,
               body
             });
+
+  notify-failure:
+    needs: [triage, thumbs-down-spam, other-request, respond]
+    if: failure() || cancelled()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      actions: read
+    steps:
+      - name: Comment failure details on the issue
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issueNumber = context.issue.number;
+            const runId = context.runId;
+
+            const { data: run } = await github.rest.actions.getWorkflowRun({
+              owner,
+              repo,
+              run_id: runId
+            });
+            const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
+              owner,
+              repo,
+              run_id: runId,
+              per_page: 100
+            });
+
+            const PROBLEM_CONCLUSIONS = new Set(['failure', 'cancelled', 'timed_out', 'startup_failure']);
+            const failedJobs = jobs.jobs.filter(job => PROBLEM_CONCLUSIONS.has(job.conclusion));
+
+            let body = "⚠️ I'm sorry, something went wrong while I was trying to address this issue.\n\n";
+            if (failedJobs.length === 0) {
+              body += "The workflow did not report a specific failed job.\n";
+            } else {
+              body += "The following failed:\n";
+              for (const job of failedJobs) {
+                body += `\n**${job.name}**\n`;
+                const failedSteps = (job.steps || []).filter(step => PROBLEM_CONCLUSIONS.has(step.conclusion));
+                if (failedSteps.length === 0) {
+                  body += "- The job failed without reporting a specific step.\n";
+                } else {
+                  for (const step of failedSteps) {
+                    body += `- ${step.name}\n`;
+                  }
+                }
+              }
+            }
+            body += `\nYou can find the full logs [here](${run.html_url}).\n`;
+            body += "\nIf you'd like me to try again, please add a comment mentioning @agent.";
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              body
+            });
