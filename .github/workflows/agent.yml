@@ -460,11 +460,20 @@ jobs:
           cat > /tmp/pr_body.txt << 'EOF'
           ${{ steps.save-address-issue-summary.outputs.summary }}
           EOF
-          PR_URL=$(gh pr create \
-            --base "${{ needs.triage.outputs.issue-branch-base }}" \
+          # Reuse an existing open PR for this branch if one was already created
+          # by a previous run, otherwise create a new one.
+          PR_URL=$(gh pr list \
             --head "${{ needs.triage.outputs.issue-branch }}" \
-            --title "$(cat /tmp/pr_title.txt)" \
-            --body-file /tmp/pr_body.txt)
+            --state open \
+            --json url \
+            --jq '.[0].url // empty' 2>/dev/null || true)
+          if [ -z "$PR_URL" ]; then
+            PR_URL=$(gh pr create \
+              --base "${{ needs.triage.outputs.issue-branch-base }}" \
+              --head "${{ needs.triage.outputs.issue-branch }}" \
+              --title "$(cat /tmp/pr_title.txt)" \
+              --body-file /tmp/pr_body.txt)
+          fi
           echo "pull-request-url=$PR_URL" >> "$GITHUB_OUTPUT"
       - name: Reply with diff and PR link
         if: (steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY') && (steps.check-for-code-changes.outputs.has-changes == 'true')
