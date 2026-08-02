@@ -20,13 +20,13 @@ runs:
     - shell: bash
       id: pi-response
       run: |
-        CONTEXT=$(echo ${{ inputs.context-base64 }} | base64 -d)
-        PROMPT=$(echo ${{ inputs.prompt-base64 }} | base64 -d)
-        SCHEMA=$(echo ${{ inputs.schema-base64 }} | base64 -d)
+        CONTEXT=$(echo "${{ inputs.context-base64 }}" | base64 -d)
+        PROMPT=$(echo "${{ inputs.prompt-base64 }}" | base64 -d)
+        SCHEMA=$(echo "${{ inputs.schema-base64 }}" | base64 -d)
         echo "${PROMPT}"
         echo "${CONTEXT}"
         echo "${SCHEMA}"
-        PI_PROMPT="${PROMPT}\n\n <Start of context> ${CONTEXT} <End of context>"
+        PI_PROMPT="${PROMPT}"$'\n\n'" <Start of context> ${CONTEXT} <End of context>"
         PI_RESPONSE=$(pi \
           --provider deepseek \
           --model deepseek-v4-pro \
