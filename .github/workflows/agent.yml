@@ -6,6 +6,13 @@ on:
   issue_comment:
     types: [created, edited]
 
+# Serialise runs per issue: two people mentioning @agent at the same time (or
+# an edit re-triggering the workflow) would otherwise race on the same branch,
+# producing conflicting commits and duplicate PRs.
+concurrency:
+  group: agent-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
 jobs:
   triage:
     if: |
@@ -73,22 +80,22 @@ jobs:
         uses: ./.github/actions/gather-issue-branches
         with:
           issue-number: ${{ github.event.issue.number }}
-          issue-branch-base: master
+          issue-branch-base: ${{ github.event.repository.default_branch }}
 
       - name: Save base64 prompts
         id: prompts
         run: |
-          echo "address-issue-base64=$(cat .github/prompts/address-issue.txt | base64 -w 0)" >> $GITHUB_OUTPUT
-          echo "classify-request-base64=$(cat .github/prompts/classify-request.txt | base64 -w 0)" >> $GITHUB_OUTPUT
-          echo "classify-response-base64=$(cat .github/prompts/classify-response.txt | base64 -w 0)" >> $GITHUB_OUTPUT
-          echo "extra-information-required-base64=$(cat .github/prompts/extra-information-required.txt | base64 -w 0)" >> $GITHUB_OUTPUT
+          echo "address-issue-base64=$(base64 -w 0 < .github/prompts/address-issue.txt)" >> "$GITHUB_OUTPUT"
+          echo "classify-request-base64=$(base64 -w 0 < .github/prompts/classify-request.txt)" >> "$GITHUB_OUTPUT"
+          echo "classify-response-base64=$(base64 -w 0 < .github/prompts/classify-response.txt)" >> "$GITHUB_OUTPUT"
+          echo "extra-information-required-base64=$(base64 -w 0 < .github/prompts/extra-information-required.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Save base64 schemas
         id: schemas
         run: |
-          echo "information-list-base64=$(cat .github/schemas/information-list.json | base64 -w 0)" >> $GITHUB_OUTPUT
-          echo "request-classification-base64=$(cat .github/schemas/request-classification.json | base64 -w 0)" >> $GITHUB_OUTPUT
-          echo "response-classification-base64=$(cat .github/schemas/response-classification.json | base64 -w 0)" >> $GITHUB_OUTPUT
+          echo "information-list-base64=$(base64 -w 0 < .github/schemas/information-list.json)" >> "$GITHUB_OUTPUT"
+          echo "request-classification-base64=$(base64 -w 0 < .github/schemas/request-classification.json)" >> "$GITHUB_OUTPUT"
+          echo "response-classification-base64=$(base64 -w 0 < .github/schemas/response-classification.json)" >> "$GITHUB_OUTPUT"
 
       - name: Get last 50 comments
         id: gather-context
@@ -112,7 +119,10 @@ jobs:
             )) {
               comments.push(...response.data);
             }
-            const history = comments.map(comment => ({
+            // Only send the most recent comments to the model: the full history
+            // of a long-lived issue can be huge (cost, tokens and job output
+            // size), and older comments are rarely relevant.
+            const history = comments.slice(-50).map(comment => ({
               author: comment.user.login,
               date: comment.created_at,
               body: comment.body,
@@ -122,7 +132,8 @@ jobs:
               body: issue.body,
               history
             };
-            console.log(issueContext);
+            // Note: don't console.log issueContext here - issue bodies/comments
+            // may contain sensitive content and workflow logs can be public.
             const stringified = JSON.stringify(issueContext);
             const context_base64 = Buffer.from(stringified).toString('base64');
             core.setOutput('context-base64', context_base64);
@@ -136,6 +147,10 @@ jobs:
 
       - name: Classify request
         id: classify-request
+        # issue_comment events also fire for comments on pull requests. We don't
+        # create issue branches/PRs for those, so skip classification and let
+        # save-request-type fall back to OTHER.
+        if: github.event.issue.pull_request == null
         uses: ./.github/actions/question-pi
         with:
           context-base64: ${{ steps.gather-context.outputs.context-base64 }}
@@ -145,14 +160,22 @@ jobs:
       - name: Save request type
         id: save-request-type
         run: |
-          REQUEST_TYPE=$(echo "${{ steps.classify-request.outputs.response-base64 }}" | base64 -d)
+          REQUEST_TYPE=$(echo "${{ steps.classify-request.outputs.response-base64 }}" | base64 -d | tr -d '[:space:]')
+          # Guard against unexpected model output (or a skipped classification
+          # for pull request comments): default to OTHER so the user always gets
+          # a visible response instead of a silent no-op.
+          case "${REQUEST_TYPE}" in
+            BUG_FIX|CHANGE_REQUEST|FEATURE_REQUEST|INVESTIGATION|QUESTION|SPAM|CAN_IGNORE|OTHER) ;;
+            *) REQUEST_TYPE=OTHER ;;
+          esac
           echo "request-type: ${REQUEST_TYPE}"
-          echo "request-type=${REQUEST_TYPE}" >> $GITHUB_OUTPUT
+          echo "request-type=${REQUEST_TYPE}" >> "$GITHUB_OUTPUT"
 
   thumbs-down-spam:
     needs: [triage]
     if: needs.triage.outputs.request-type == 'SPAM'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
       id-token: write
@@ -192,6 +215,7 @@ jobs:
     needs: [triage]
     if: needs.triage.outputs.request-type == 'OTHER'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
       id-token: write
@@ -243,6 +267,7 @@ jobs:
     needs: [triage]
     if: (needs.triage.outputs.request-type == 'BUG_FIX') || (needs.triage.outputs.request-type == 'CHANGE_REQUEST') || (needs.triage.outputs.request-type == 'FEATURE_REQUEST') || (needs.triage.outputs.request-type == 'INVESTIGATION') || (needs.triage.outputs.request-type == 'QUESTION')
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     permissions:
       contents: write
       id-token: write
@@ -297,9 +322,16 @@ jobs:
       - name: Save response type
         id: save-response-type
         run: |
-          RESPONSE_TYPE=$(echo "${{ steps.classify-response.outputs.response-base64 }}" | base64 -d)
+          RESPONSE_TYPE=$(echo "${{ steps.classify-response.outputs.response-base64 }}" | base64 -d | tr -d '[:space:]')
+          # Guard against unexpected model output: default to
+          # REQUIRES_MORE_INFORMATION so the user always gets a visible response
+          # instead of a silent no-op.
+          case "${RESPONSE_TYPE}" in
+            ALREADY_ADDRESSED|REQUIRES_HUMAN|REQUIRES_MORE_INFORMATION|CAN_ADDRESS_FULLY) ;;
+            *) RESPONSE_TYPE=REQUIRES_MORE_INFORMATION ;;
+          esac
           echo "RESPONSE_TYPE: ${RESPONSE_TYPE}"
-          echo "response-type=${RESPONSE_TYPE}" >> $GITHUB_OUTPUT
+          echo "response-type=${RESPONSE_TYPE}" >> "$GITHUB_OUTPUT"
 
       - name: Classify extra information required
         id: classify-extra-information-required
@@ -315,9 +347,12 @@ jobs:
         run: |
           EXTRA_INFORMATION_REQUIRED=$(echo "${{ steps.classify-extra-information-required.outputs.response-base64 }}" | base64 -d)
           echo "EXTRA_INFORMATION_REQUIRED: ${EXTRA_INFORMATION_REQUIRED}"
-          echo "extra-information-required<<EOF" >> $GITHUB_OUTPUT
-          echo "${EXTRA_INFORMATION_REQUIRED}" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Use a random delimiter so a model response containing a line that
+          # reads "EOF" cannot truncate the multi-line output value.
+          DELIM="GHA_EOF_$RANDOM"
+          echo "extra-information-required<<${DELIM}" >> "$GITHUB_OUTPUT"
+          echo "${EXTRA_INFORMATION_REQUIRED}" >> "$GITHUB_OUTPUT"
+          echo "${DELIM}" >> "$GITHUB_OUTPUT"
 
 # Already addressed
       - name: Reply as already addressed
@@ -364,7 +399,16 @@ jobs:
         uses: actions/github-script@v9
         with:
           script: |
-            const extraInfo = ${{ toJson(steps.save-extra-information-required.outputs.extra-information-required) }};
+            let extraInfo = ${{ toJson(steps.save-extra-information-required.outputs.extra-information-required) }};
+            // The model response may be a JSON array (as the schema intends) or
+            // plain text - handle both so the array branch is actually reachable.
+            if (typeof extraInfo === 'string') {
+              try {
+                extraInfo = JSON.parse(extraInfo);
+              } catch (e) {
+                // Not JSON; use the raw text.
+              }
+            }
             let body = "The following additional information is required:\n";
             if (Array.isArray(extraInfo)) {
               extraInfo.forEach(item => {
@@ -420,16 +464,19 @@ jobs:
         if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
         run: |
           SUMMARY=$(echo "${{ steps.address-issue.outputs.response-base64 }}" | base64 -d)
-          echo "summary<<EOF" >> $GITHUB_OUTPUT
-          echo "${SUMMARY}" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Use a random delimiter so a summary containing a line that reads
+          # "EOF" cannot truncate the multi-line output value.
+          DELIM="GHA_EOF_$RANDOM"
+          echo "summary<<${DELIM}" >> "$GITHUB_OUTPUT"
+          echo "${SUMMARY}" >> "$GITHUB_OUTPUT"
+          echo "${DELIM}" >> "$GITHUB_OUTPUT"
       - name: Check for code changes
         id: check-for-code-changes
         if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
         run: |
           # quick local check
           if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
-            echo "has-changes=true" >> $GITHUB_OUTPUT
+            echo "has-changes=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           # slow network check
@@ -449,7 +496,7 @@ jobs:
           else
             HAS_CHANGES=false
           fi
-          echo "has-changes=${HAS_CHANGES}" >> $GITHUB_OUTPUT
+          echo "has-changes=${HAS_CHANGES}" >> "$GITHUB_OUTPUT"
       - name: Commit and push code changes
         if: (steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY') && (steps.check-for-code-changes.outputs.has-changes == 'true')
         run: |
@@ -476,11 +523,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          # Write title and body to temporary files to handle quotes and backticks
+          # Write title and body to temporary files to handle quotes and backticks.
+          # Use a random, quoted delimiter so a summary containing "EOF" or
+          # shell metacharacters cannot break the heredoc.
           echo "Closes #${{ github.event.issue.number }} ${{ github.event.issue.title }}" > /tmp/pr_title.txt
-          cat > /tmp/pr_body.txt << 'EOF'
+          PR_BODY_DELIM="PR_BODY_EOF_$RANDOM"
+          cat > /tmp/pr_body.txt << "$PR_BODY_DELIM"
           ${{ steps.save-address-issue-summary.outputs.summary }}
-          EOF
+          $PR_BODY_DELIM
           # Reuse an existing open PR for this branch if one was already created
           # by a previous run, otherwise create a new one.
           PR_URL=$(gh pr list \
@@ -515,6 +565,7 @@ jobs:
     needs: [triage, thumbs-down-spam, other-request, respond]
     if: failure() || cancelled()
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       issues: write
       actions: read
