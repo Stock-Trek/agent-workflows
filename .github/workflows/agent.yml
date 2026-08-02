@@ -424,10 +424,29 @@ jobs:
         id: check-for-code-changes
         if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
         run: |
-          if git diff --quiet && git diff --cached --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
-            echo "has-changes=false" >> $GITHUB_OUTPUT
+          ISSUE_BRANCH="${{ needs.triage.outputs.issue-branch }}"
+          ISSUE_BRANCH_BASE="${{ needs.triage.outputs.issue-branch-base }}"
+          # Fetch the latest state of the remote branch so that committed but
+          # unpushed changes are detected (the agent may commit before this step).
+          git fetch origin "$ISSUE_BRANCH" 2>/dev/null || true
+          git fetch origin "$ISSUE_BRANCH_BASE" 2>/dev/null || true
+          HAS_LOCAL_CHANGES=false
+          if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+            HAS_LOCAL_CHANGES=true
+          fi
+          # Compare against the remote branch if it exists, otherwise against
+          # the base branch, so that committed changes are also detected.
+          if git rev-parse --verify "origin/$ISSUE_BRANCH" >/dev/null 2>&1; then
+            REFERENCE="origin/$ISSUE_BRANCH"
+          elif git rev-parse --verify "origin/$ISSUE_BRANCH_BASE" >/dev/null 2>&1; then
+            REFERENCE="origin/$ISSUE_BRANCH_BASE"
           else
+            REFERENCE="HEAD"
+          fi
+          if [ "$HAS_LOCAL_CHANGES" = "true" ] || ! git diff --quiet HEAD "$REFERENCE"; then
             echo "has-changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-changes=false" >> $GITHUB_OUTPUT
           fi
       - name: Commit and push code changes
         if: (steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY')
