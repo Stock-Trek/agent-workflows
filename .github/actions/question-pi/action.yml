@@ -26,14 +26,27 @@ runs:
         echo "${PROMPT}"
         echo "${SCHEMA}"
         PI_PROMPT="${PROMPT}"$'\n\n'" <Start of context> ${CONTEXT} <End of context>"
+        # Enforce the json schema via the pi-json-schema extension: pi validates
+        # the output against the schema and writes it to a file which we read
+        # back. json_output must be in the --tools allowlist or the extension's
+        # tool is filtered out and schema enforcement never happens.
+        JSON_OUTPUT_FILE=$(mktemp)
         PI_RESPONSE=$(pi \
           --provider deepseek \
           --model deepseek-v4-pro \
-          --tools read,bash,grep,find,ls \
+          --tools read,bash,grep,find,ls,json_output \
           --json-schema "${SCHEMA}" \
           --json-fallback force \
+          --json-output "${JSON_OUTPUT_FILE}" \
           --print "${PI_PROMPT}" \
           )
         echo "${PI_RESPONSE}"
-        PI_RESPONSE_BASE64=$(echo "${PI_RESPONSE}" | base64 -w 0)
+        # Fail loudly if pi exited without writing the validated output (e.g.
+        # an empty model response) instead of silently returning an empty value.
+        if [ ! -s "${JSON_OUTPUT_FILE}" ]; then
+          echo "Error: pi did not write a schema-validated JSON output to ${JSON_OUTPUT_FILE}" >&2
+          exit 1
+        fi
+        PI_RESPONSE_BASE64=$(base64 -w 0 < "${JSON_OUTPUT_FILE}")
+        rm -f "${JSON_OUTPUT_FILE}"
         echo "pi-response-base64=${PI_RESPONSE_BASE64}" >> "$GITHUB_OUTPUT"

@@ -160,10 +160,10 @@ jobs:
       - name: Save request type
         id: save-request-type
         run: |
-          REQUEST_TYPE=$(echo "${{ steps.classify-request.outputs.response-base64 }}" | base64 -d | tr -d '[:space:]')
-          # Guard against unexpected model output (or a skipped classification
-          # for pull request comments): default to OTHER so the user always gets
-          # a visible response instead of a silent no-op.
+          REQUEST_TYPE=$(echo "${{ steps.classify-request.outputs.response-base64 }}" | base64 -d | jq -r .request_type)
+          # Guard against a skipped classification (pull request comments) or
+          # other unexpected output: default to OTHER so the user always gets a
+          # visible response instead of a silent no-op.
           case "${REQUEST_TYPE}" in
             BUG_FIX|CHANGE_REQUEST|FEATURE_REQUEST|INVESTIGATION|QUESTION|SPAM|CAN_IGNORE|OTHER) ;;
             *) REQUEST_TYPE=OTHER ;;
@@ -322,7 +322,7 @@ jobs:
       - name: Save response type
         id: save-response-type
         run: |
-          RESPONSE_TYPE=$(echo "${{ steps.classify-response.outputs.response-base64 }}" | base64 -d | tr -d '[:space:]')
+          RESPONSE_TYPE=$(echo "${{ steps.classify-response.outputs.response-base64 }}" | base64 -d | jq -r .response_type)
           # Guard against unexpected model output: default to
           # REQUIRES_MORE_INFORMATION so the user always gets a visible response
           # instead of a silent no-op.
@@ -345,7 +345,7 @@ jobs:
         id: save-extra-information-required
         if: steps.save-response-type.outputs.response-type == 'REQUIRES_MORE_INFORMATION'
         run: |
-          EXTRA_INFORMATION_REQUIRED=$(echo "${{ steps.classify-extra-information-required.outputs.response-base64 }}" | base64 -d)
+          EXTRA_INFORMATION_REQUIRED=$(echo "${{ steps.classify-extra-information-required.outputs.response-base64 }}" | base64 -d | jq -c .information)
           echo "EXTRA_INFORMATION_REQUIRED: ${EXTRA_INFORMATION_REQUIRED}"
           # Use a random delimiter so a model response containing a line that
           # reads "EOF" cannot truncate the multi-line output value.
@@ -400,8 +400,8 @@ jobs:
         with:
           script: |
             let extraInfo = ${{ toJson(steps.save-extra-information-required.outputs.extra-information-required) }};
-            // The model response may be a JSON array (as the schema intends) or
-            // plain text - handle both so the array branch is actually reachable.
+            // The response is schema-validated JSON (an array of strings); parse
+            // it, falling back to the raw text for robustness.
             if (typeof extraInfo === 'string') {
               try {
                 extraInfo = JSON.parse(extraInfo);
