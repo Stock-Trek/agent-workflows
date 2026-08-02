@@ -138,8 +138,6 @@ jobs:
               body: issue.body,
               history
             };
-            // Note: don't console.log issueContext here - issue bodies/comments
-            // may contain sensitive content and workflow logs can be public.
             const stringified = JSON.stringify(issueContext);
             const context_base64 = Buffer.from(stringified).toString('base64');
             core.setOutput('context-base64', context_base64);
