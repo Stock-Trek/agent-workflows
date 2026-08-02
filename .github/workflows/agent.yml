@@ -442,11 +442,11 @@ jobs:
             REFERENCE="HEAD"
           fi
           if ! git diff --quiet HEAD "$REFERENCE"; then
-            HAS_LOCAL_CHANGES=true
+            HAS_CHANGES=true
           else
-            HAS_LOCAL_CHANGES=false
+            HAS_CHANGES=false
           fi
-          echo "has-changes=${HAS_LOCAL_CHANGES}" >> $GITHUB_OUTPUT
+          echo "has-changes=${HAS_CHANGES}" >> $GITHUB_OUTPUT
       - name: Commit and push code changes
         if: (steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY')
         run: |
