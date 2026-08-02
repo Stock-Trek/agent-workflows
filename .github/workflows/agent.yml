@@ -475,19 +475,12 @@ jobs:
         id: check-for-code-changes
         if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
         run: |
-          # Fast local check: uncommitted, staged or untracked changes.
+          # quick local check
           if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
             echo "has-changes=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Slow network check: does the branch contain commits that are not on
-          # the base branch? Compare against the BASE, not the remote issue
-          # branch: pi may have committed AND pushed its changes itself, in
-          # which case the working tree is clean and the local branch is in
-          # sync with origin/<issue-branch> but still ahead of the base. The
-          # old check compared HEAD against origin/<issue-branch> first and
-          # therefore missed that case, replying "no code changes" and never
-          # opening a PR even though the changes were on the branch.
+          # slow network check against base
           ISSUE_BRANCH_BASE="${{ needs.triage.outputs.issue-branch-base }}"
           git fetch origin "$ISSUE_BRANCH_BASE" 2>/dev/null || true
           if git rev-parse --verify "origin/$ISSUE_BRANCH_BASE" >/dev/null 2>&1; then
@@ -508,11 +501,6 @@ jobs:
           git config --global user.email "agent@stock-trek.com"
           git config --global user.name "Stock-Trek Agent"
           git add .
-          # Only create a commit if pi left uncommitted changes in the working
-          # tree. If pi already committed (and possibly pushed) its changes, the
-          # tree is clean and there is nothing to stage - committing with
-          # --allow-empty would just add an empty "Commit changes made by pi"
-          # commit on top of the real work.
           if ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
             git commit -m "Commit changes made by pi"
           fi
