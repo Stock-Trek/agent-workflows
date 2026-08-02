@@ -24,7 +24,6 @@ jobs:
       classify-request-base64: ${{ steps.prompts.outputs.classify-request-base64 }}
       classify-response-base64: ${{ steps.prompts.outputs.classify-response-base64 }}
       extra-information-required-base64: ${{ steps.prompts.outputs.extra-information-required-base64 }}
-      boolean-base64: ${{ steps.schemas.outputs.boolean-base64 }}
       information-list-base64: ${{ steps.schemas.outputs.information-list-base64 }}
       request-classification-base64: ${{ steps.schemas.outputs.request-classification-base64 }}
       response-classification-base64: ${{ steps.schemas.outputs.response-classification-base64 }}
@@ -87,7 +86,6 @@ jobs:
       - name: Save base64 schemas
         id: schemas
         run: |
-          echo "boolean-base64=$(cat .github/schemas/boolean.json | base64 -w 0)" >> $GITHUB_OUTPUT
           echo "information-list-base64=$(cat .github/schemas/information-list.json | base64 -w 0)" >> $GITHUB_OUTPUT
           echo "request-classification-base64=$(cat .github/schemas/request-classification.json | base64 -w 0)" >> $GITHUB_OUTPUT
           echo "response-classification-base64=$(cat .github/schemas/response-classification.json | base64 -w 0)" >> $GITHUB_OUTPUT
@@ -102,12 +100,18 @@ jobs:
               repo: context.repo.repo,
               issue_number: context.issue.number
             });
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              per_page: 50
-            });
+            const comments = [];
+            for await (const response of github.paginate.iterator(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100
+              }
+            )) {
+              comments.push(...response.data);
+            }
             const lastComments = comments.slice(-50);
             const history = lastComments.map(comment => ({
               author: comment.user.login,
@@ -294,7 +298,7 @@ jobs:
       - name: Save response type
         id: save-response-type
         run: |
-          RESPONSE_TYPE=$(echo ${{ steps.classify-response.outputs.response-base64 }} | base64 -d)
+          RESPONSE_TYPE=$(echo "${{ steps.classify-response.outputs.response-base64 }}" | base64 -d)
           echo "RESPONSE_TYPE: ${RESPONSE_TYPE}"
           echo "response-type=${RESPONSE_TYPE}" >> $GITHUB_OUTPUT
 
@@ -310,7 +314,7 @@ jobs:
         id: save-extra-information-required
         if: steps.save-response-type.outputs.response-type == 'REQUIRES_MORE_INFORMATION'
         run: |
-          EXTRA_INFORMATION_REQUIRED=$(echo ${{ steps.classify-extra-information-required.outputs.response-base64 }} | base64 -d)
+          EXTRA_INFORMATION_REQUIRED=$(echo "${{ steps.classify-extra-information-required.outputs.response-base64 }}" | base64 -d)
           echo "EXTRA_INFORMATION_REQUIRED: ${EXTRA_INFORMATION_REQUIRED}"
           echo "extra-information-required<<EOF" >> $GITHUB_OUTPUT
           echo "${EXTRA_INFORMATION_REQUIRED}" >> $GITHUB_OUTPUT
@@ -448,7 +452,7 @@ jobs:
           fi
           echo "has-changes=${HAS_CHANGES}" >> $GITHUB_OUTPUT
       - name: Commit and push code changes
-        if: (steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY')
+        if: (steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY') && (steps.check-for-code-changes.outputs.has-changes == 'true')
         run: |
           git config --global user.email "agent@stock-trek.com"
           git config --global user.name "Stock-Trek Agent"
