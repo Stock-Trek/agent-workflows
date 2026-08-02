@@ -367,6 +367,18 @@ jobs:
           branch: ${{ needs.triage.outputs.issue-branch }}
           base: ${{ needs.triage.outputs.issue-branch-base }}
           create-if-not-exists: true
+      # - name: Set up shipyard ssh auth
+      #   if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
+      #   env:
+      #     SHIPYARD_KNOWN_HOST: ${{ env.SHIPYARD_KNOWN_HOST }}
+      #     SHIPYARD_SSH_PRIVATE_KEY_CLIENT: ${{ env.SHIPYARD_SSH_PRIVATE_KEY_CLIENT }}
+      #   run: |
+      #     mkdir -p ~/.ssh
+      #     chmod 700 ~/.ssh
+      #     printf '%s\n' "${{ env.SHIPYARD_SSH_PRIVATE_KEY_CLIENT }}" > ~/.ssh/id_ed25519
+      #     chmod 600 ~/.ssh/id_ed25519
+      #     echo "${{ env.SHIPYARD_KNOWN_HOST }}" >> ~/.ssh/known_hosts
+      #     ssh -T git@ssh.shipyard.rs
       - name: Address issue
         id: address-issue
         if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
@@ -417,10 +429,8 @@ jobs:
       - name: Commit and push code changes
         if: (steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY') && (steps.check-for-code-changes.outputs.has-changes == 'true')
         run: |
-          # The commit identity is configurable via repository variables so the
-          # workflow can be reused in other organisations without editing it.
-          git config --global user.email "${{ vars.AGENT_GIT_USER_EMAIL || 'agent@stock-trek.com' }}"
-          git config --global user.name "${{ vars.AGENT_GIT_USER_NAME || 'Stock-Trek Agent' }}"
+          git config --global user.email "agent@stock-trek.com"
+          git config --global user.name "Stock-Trek Agent"
           git add .
           git commit --allow-empty -m "Commit changes made by pi"
           git push
@@ -445,13 +455,10 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_IS_PR: ${{ github.event.issue.pull_request != null }}
         run: |
-          # Write title and body to temporary files to handle quotes and backticks.
-          # Use a random, quoted delimiter so a summary containing "EOF" or
-          # shell metacharacters cannot break the heredoc.
-          # Event data is passed via environment variables so an issue title
-          # containing shell metacharacters cannot be injected into the script.
-          # When the request came from a comment on a pull request, reference
-          # rather than "close" it: the number refers to a PR, not an issue.
+          # Write title and body to temporary files to handle quotes and backticks
+          # Use a random, quoted delimiter so a summary containing "EOF" or shell metacharacters cannot break the heredoc
+          # Event data is passed via environment variables so an issue title containing shell metacharacters cannot be injected into the script
+          # When the request came from a comment on a pull request, reference rather than "close" it: the number refers to a PR, not an issue
           if [ "${ISSUE_IS_PR}" == "true" ]; then
             REFERENCE="Addresses"
           else
@@ -499,8 +506,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      issues: write
       actions: read
+      issues: write
     steps:
       - name: Comment failure details on the issue
         uses: actions/github-script@v9
