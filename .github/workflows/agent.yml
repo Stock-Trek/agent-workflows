@@ -480,19 +480,16 @@ jobs:
             echo "has-changes=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # slow network check
-          ISSUE_BRANCH="${{ needs.triage.outputs.issue-branch }}"
+          # slow network check against base
           ISSUE_BRANCH_BASE="${{ needs.triage.outputs.issue-branch-base }}"
-          git fetch origin "$ISSUE_BRANCH" 2>/dev/null || true
           git fetch origin "$ISSUE_BRANCH_BASE" 2>/dev/null || true
-          if git rev-parse --verify "origin/$ISSUE_BRANCH" >/dev/null 2>&1; then
-            REFERENCE="origin/$ISSUE_BRANCH"
-          elif git rev-parse --verify "origin/$ISSUE_BRANCH_BASE" >/dev/null 2>&1; then
+          if git rev-parse --verify "origin/$ISSUE_BRANCH_BASE" >/dev/null 2>&1; then
             REFERENCE="origin/$ISSUE_BRANCH_BASE"
           else
             REFERENCE="HEAD"
           fi
-          if ! git diff --quiet HEAD "$REFERENCE"; then
+          COMMITS_AHEAD=$(git rev-list --count "$REFERENCE"..HEAD 2>/dev/null || echo 0)
+          if [ "${COMMITS_AHEAD}" -gt 0 ]; then
             HAS_CHANGES=true
           else
             HAS_CHANGES=false
@@ -504,7 +501,9 @@ jobs:
           git config --global user.email "agent@stock-trek.com"
           git config --global user.name "Stock-Trek Agent"
           git add .
-          git commit --allow-empty -m "Commit changes made by pi"
+          if ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+            git commit -m "Commit changes made by pi"
+          fi
           git push
       - name: Reply if no code changes made
         if: (steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY') && (steps.check-for-code-changes.outputs.has-changes == 'false')
