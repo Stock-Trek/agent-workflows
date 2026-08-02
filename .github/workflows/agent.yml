@@ -147,8 +147,6 @@ jobs:
 
       - name: Classify request
         id: classify-request
-        # issue_comment events also fire for comments on pull requests. Handle
-        # those in the same way as issue comments, so classify them too.
         uses: ./.github/actions/question-pi
         with:
           context-base64: ${{ steps.gather-context.outputs.context-base64 }}
