@@ -147,10 +147,8 @@ jobs:
 
       - name: Classify request
         id: classify-request
-        # issue_comment events also fire for comments on pull requests. We don't
-        # create issue branches/PRs for those, so skip classification and let
-        # save-request-type fall back to OTHER.
-        if: github.event.issue.pull_request == null
+        # issue_comment events also fire for comments on pull requests. Handle
+        # those in the same way as issue comments, so classify them too.
         uses: ./.github/actions/question-pi
         with:
           context-base64: ${{ steps.gather-context.outputs.context-base64 }}
@@ -161,9 +159,8 @@ jobs:
         id: save-request-type
         run: |
           REQUEST_TYPE=$(echo "${{ steps.classify-request.outputs.response-base64 }}" | base64 -d | tr -d '[:space:]')
-          # Guard against unexpected model output (or a skipped classification
-          # for pull request comments): default to OTHER so the user always gets
-          # a visible response instead of a silent no-op.
+          # Guard against unexpected model output: default to OTHER so the user
+          # always gets a visible response instead of a silent no-op.
           case "${REQUEST_TYPE}" in
             BUG_FIX|CHANGE_REQUEST|FEATURE_REQUEST|INVESTIGATION|QUESTION|SPAM|CAN_IGNORE|OTHER) ;;
             *) REQUEST_TYPE=OTHER ;;
@@ -526,7 +523,14 @@ jobs:
           # Write title and body to temporary files to handle quotes and backticks.
           # Use a random, quoted delimiter so a summary containing "EOF" or
           # shell metacharacters cannot break the heredoc.
-          echo "Closes #${{ github.event.issue.number }} ${{ github.event.issue.title }}" > /tmp/pr_title.txt
+          # When the request came from a comment on a pull request, reference
+          # rather than "close" it: the number refers to a PR, not an issue.
+          if [ "${{ github.event.issue.pull_request != null }}" == "true" ]; then
+            REFERENCE="Addresses"
+          else
+            REFERENCE="Closes"
+          fi
+          echo "${REFERENCE} #${{ github.event.issue.number }} ${{ github.event.issue.title }}" > /tmp/pr_title.txt
           PR_BODY_DELIM="PR_BODY_EOF_$RANDOM"
           cat > /tmp/pr_body.txt << "$PR_BODY_DELIM"
           ${{ steps.save-address-issue-summary.outputs.summary }}
