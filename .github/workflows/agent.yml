@@ -112,8 +112,7 @@ jobs:
             )) {
               comments.push(...response.data);
             }
-            const lastComments = comments.slice(-50);
-            const history = lastComments.map(comment => ({
+            const history = comments.map(comment => ({
               author: comment.user.login,
               date: comment.created_at,
               body: comment.body,
