@@ -62,16 +62,12 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Authenticate
-        id: authenticate
-        uses: ./.github/actions/authenticate
-
       - name: Remove all previous reactions from issue and comment
         uses: ./.github/actions/remove-emoji-reactions
         with:
           comment-id: ${{ github.event.comment.id }}
           issue-number: ${{ github.event.issue.number }}
-          token: ${{ steps.authenticate.outputs.token }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Acknowledge
         uses: ./.github/actions/emoji-react
@@ -79,7 +75,7 @@ jobs:
           comment-id: ${{ github.event.comment.id }}
           issue-number: ${{ github.event.issue.number }}
           reaction: 'eyes'
-          token: ${{ steps.authenticate.outputs.token }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Gather issue branches
         id: gather-branches
@@ -206,17 +202,13 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Authenticate
-        id: authenticate
-        uses: ./.github/actions/authenticate
-
       - name: Thumbs down
         uses: ./.github/actions/emoji-react
         with:
           comment-id: ${{ github.event.comment.id }}
           issue-number: ${{ github.event.issue.number }}
           reaction: '-1'
-          token: ${{ steps.authenticate.outputs.token }}
+          token: ${{ steps.app-token.outputs.token }}
 
   other-request:
     needs: [triage]
@@ -251,17 +243,13 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Authenticate
-        id: authenticate
-        uses: ./.github/actions/authenticate
-
       - name: React confused
         uses: ./.github/actions/emoji-react
         with:
           comment-id: ${{ github.event.comment.id }}
           issue-number: ${{ github.event.issue.number }}
           reaction: 'confused'
-          token: ${{ steps.authenticate.outputs.token }}
+          token: ${{ steps.app-token.outputs.token }}
       - name: Add comment
         uses: actions/github-script@v9
         with:
@@ -307,10 +295,6 @@ jobs:
         uses: actions/checkout@v5
         with:
           token: ${{ steps.app-token.outputs.token }}
-
-      - name: Authenticate
-        id: authenticate
-        uses: ./.github/actions/authenticate
 
       - name: Checkout issue branch if it exists
         id: checkout-issue-branch
@@ -408,7 +392,7 @@ jobs:
           comment-id: ${{ github.event.comment.id }}
           issue-number: ${{ github.event.issue.number }}
           reaction: 'confused'
-          token: ${{ steps.authenticate.outputs.token }}
+          token: ${{ steps.app-token.outputs.token }}
       - name: Ask for required information
         if: steps.save-response-type.outputs.response-type == 'REQUIRES_MORE_INFORMATION'
         uses: actions/github-script@v9
@@ -447,7 +431,7 @@ jobs:
           comment-id: ${{ github.event.comment.id }}
           issue-number: ${{ github.event.issue.number }}
           reaction: '+1'
-          token: ${{ steps.authenticate.outputs.token }}
+          token: ${{ steps.app-token.outputs.token }}
       - name: Ensure issue branch
         if: (steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY')
         uses: ./.github/actions/checkout-branch
@@ -538,7 +522,7 @@ jobs:
         id: raise-pr
         if: (steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY') && (steps.check-for-code-changes.outputs.has-changes == 'true')
         env:
-          GITHUB_TOKEN: ${{ steps.authenticate.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_IS_PR: ${{ github.event.issue.pull_request != null }}
