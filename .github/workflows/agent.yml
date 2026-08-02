@@ -426,14 +426,21 @@ jobs:
         run: |
           ISSUE_BRANCH="${{ needs.triage.outputs.issue-branch }}"
           ISSUE_BRANCH_BASE="${{ needs.triage.outputs.issue-branch-base }}"
-          # Fetch the latest state of the remote branch so that committed but
-          # unpushed changes are detected (the agent may commit before this step).
-          git fetch origin "$ISSUE_BRANCH" 2>/dev/null || true
-          git fetch origin "$ISSUE_BRANCH_BASE" 2>/dev/null || true
+          # Detect local changes first as it is fast and avoids unnecessary
+          # network calls to fetch and compare remote branches.
           HAS_LOCAL_CHANGES=false
           if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
             HAS_LOCAL_CHANGES=true
           fi
+          if [ "$HAS_LOCAL_CHANGES" = "true" ]; then
+            echo "has-changes=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          # No local changes, so fetch the latest state of the remote branches
+          # to detect committed but unpushed changes (the agent may commit
+          # before this step).
+          git fetch origin "$ISSUE_BRANCH" 2>/dev/null || true
+          git fetch origin "$ISSUE_BRANCH_BASE" 2>/dev/null || true
           # Compare against the remote branch if it exists, otherwise against
           # the base branch, so that committed changes are also detected.
           if git rev-parse --verify "origin/$ISSUE_BRANCH" >/dev/null 2>&1; then
@@ -443,7 +450,7 @@ jobs:
           else
             REFERENCE="HEAD"
           fi
-          if [ "$HAS_LOCAL_CHANGES" = "true" ] || ! git diff --quiet HEAD "$REFERENCE"; then
+          if ! git diff --quiet HEAD "$REFERENCE"; then
             echo "has-changes=true" >> $GITHUB_OUTPUT
           else
             echo "has-changes=false" >> $GITHUB_OUTPUT
