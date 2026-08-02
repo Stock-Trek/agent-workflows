@@ -1,14 +1,16 @@
 name: Agent
 
+# Restrict the default GITHUB_TOKEN permissions
+permissions:
+  contents: read
+
 on:
   issues:
     types: [edited, opened, reopened]
   issue_comment:
     types: [created, edited]
 
-# Serialise runs per issue: two people mentioning @agent at the same time (or
-# an edit re-triggering the workflow) would otherwise race on the same branch,
-# producing conflicting commits and duplicate PRs.
+# Prevent multiple agents editing the branch at the same time
 concurrency:
   group: agent-${{ github.event.issue.number }}
   cancel-in-progress: false
@@ -37,35 +39,16 @@ jobs:
       issue-context-base64: ${{ steps.gather-context.outputs.context-base64 }}
       request-type: ${{ steps.save-request-type.outputs.request-type }}
     steps:
-      - name: Get secrets
-        uses: Infisical/secrets-action@v1.0.16
-        with:
-          method: "oidc"
-          identity-id: "29578305-c46a-4ccd-a428-549edac4c3a2" # "c603d49b-292c-42ae-b838-52e03e3c3a84"
-          project-slug: "agent-editor"                        # "agents"
-          env-slug: "dev"
-
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v3
-        env:
-          GITHUB_APP_AGENT_HELPER_CLIENT_ID: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
-          GITHUB_APP_AGENT_HELPER_PRIVATE_KEY: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
-        with:
-          client-id: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
-          private-key: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
-
-      - name: Checkout repository
-        uses: actions/checkout@v5
-        with:
-          token: ${{ steps.app-token.outputs.token }}
+      - name: Authenticate
+        id: authenticate
+        uses: ./.github/actions/authenticate
 
       - name: Remove all previous reactions from issue and comment
         uses: ./.github/actions/remove-emoji-reactions
         with:
           comment-id: ${{ github.event.comment.id }}
           issue-number: ${{ github.event.issue.number }}
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.authenticate.outputs.token }}
 
       - name: Acknowledge
         uses: ./.github/actions/emoji-react
@@ -73,7 +56,7 @@ jobs:
           comment-id: ${{ github.event.comment.id }}
           issue-number: ${{ github.event.issue.number }}
           reaction: 'eyes'
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.authenticate.outputs.token }}
 
       - name: Gather issue branches
         id: gather-branches
@@ -85,17 +68,21 @@ jobs:
       - name: Save base64 prompts
         id: prompts
         run: |
-          echo "address-issue-base64=$(base64 -w 0 < .github/prompts/address-issue.txt)" >> "$GITHUB_OUTPUT"
-          echo "classify-request-base64=$(base64 -w 0 < .github/prompts/classify-request.txt)" >> "$GITHUB_OUTPUT"
-          echo "classify-response-base64=$(base64 -w 0 < .github/prompts/classify-response.txt)" >> "$GITHUB_OUTPUT"
-          echo "extra-information-required-base64=$(base64 -w 0 < .github/prompts/extra-information-required.txt)" >> "$GITHUB_OUTPUT"
+          {
+            echo "address-issue-base64=$(base64 -w 0 < .github/prompts/address-issue.txt)"
+            echo "classify-request-base64=$(base64 -w 0 < .github/prompts/classify-request.txt)"
+            echo "classify-response-base64=$(base64 -w 0 < .github/prompts/classify-response.txt)"
+            echo "extra-information-required-base64=$(base64 -w 0 < .github/prompts/extra-information-required.txt)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Save base64 schemas
         id: schemas
         run: |
-          echo "information-list-base64=$(base64 -w 0 < .github/schemas/information-list.json)" >> "$GITHUB_OUTPUT"
-          echo "request-classification-base64=$(base64 -w 0 < .github/schemas/request-classification.json)" >> "$GITHUB_OUTPUT"
-          echo "response-classification-base64=$(base64 -w 0 < .github/schemas/response-classification.json)" >> "$GITHUB_OUTPUT"
+          {
+            echo "information-list-base64=$(base64 -w 0 < .github/schemas/information-list.json)"
+            echo "request-classification-base64=$(base64 -w 0 < .github/schemas/request-classification.json)"
+            echo "response-classification-base64=$(base64 -w 0 < .github/schemas/response-classification.json)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Get last 50 comments
         id: gather-context
@@ -142,8 +129,6 @@ jobs:
         uses: ./.github/actions/set-up-deepseek-via-pi
         env:
           DEEPSEEK_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
-        with:
-          api-key: ${{ env.DEEPSEEK_API_KEY }}
 
       - name: Classify request
         id: classify-request
@@ -175,28 +160,9 @@ jobs:
       contents: write
       id-token: write
     steps:
-      - name: Get secrets
-        uses: Infisical/secrets-action@v1.0.16
-        with:
-          method: "oidc"
-          identity-id: "29578305-c46a-4ccd-a428-549edac4c3a2" # "c603d49b-292c-42ae-b838-52e03e3c3a84"
-          project-slug: "agent-editor"                        # "agents"
-          env-slug: "dev"
-
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v3
-        env:
-          GITHUB_APP_AGENT_HELPER_CLIENT_ID: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
-          GITHUB_APP_AGENT_HELPER_PRIVATE_KEY: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
-        with:
-          client-id: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
-          private-key: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
-
-      - name: Checkout repository
-        uses: actions/checkout@v5
-        with:
-          token: ${{ steps.app-token.outputs.token }}
+      - name: Authenticate
+        id: authenticate
+        uses: ./.github/actions/authenticate
 
       - name: Thumbs down
         uses: ./.github/actions/emoji-react
@@ -204,7 +170,7 @@ jobs:
           comment-id: ${{ github.event.comment.id }}
           issue-number: ${{ github.event.issue.number }}
           reaction: '-1'
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.authenticate.outputs.token }}
 
   other-request:
     needs: [triage]
@@ -216,28 +182,9 @@ jobs:
       id-token: write
       issues: write
     steps:
-      - name: Get secrets
-        uses: Infisical/secrets-action@v1.0.16
-        with:
-          method: "oidc"
-          identity-id: "29578305-c46a-4ccd-a428-549edac4c3a2" # "c603d49b-292c-42ae-b838-52e03e3c3a84"
-          project-slug: "agent-editor"                        # "agents"
-          env-slug: "dev"
-
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v3
-        env:
-          GITHUB_APP_AGENT_HELPER_CLIENT_ID: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
-          GITHUB_APP_AGENT_HELPER_PRIVATE_KEY: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
-        with:
-          client-id: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
-          private-key: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
-
-      - name: Checkout repository
-        uses: actions/checkout@v5
-        with:
-          token: ${{ steps.app-token.outputs.token }}
+      - name: Authenticate
+        id: authenticate
+        uses: ./.github/actions/authenticate
 
       - name: React confused
         uses: ./.github/actions/emoji-react
@@ -245,7 +192,7 @@ jobs:
           comment-id: ${{ github.event.comment.id }}
           issue-number: ${{ github.event.issue.number }}
           reaction: 'confused'
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.authenticate.outputs.token }}
       - name: Add comment
         uses: actions/github-script@v9
         with:
@@ -269,28 +216,9 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - name: Get secrets
-        uses: Infisical/secrets-action@v1.0.16
-        with:
-          method: "oidc"
-          identity-id: "29578305-c46a-4ccd-a428-549edac4c3a2" # "c603d49b-292c-42ae-b838-52e03e3c3a84"
-          project-slug: "agent-editor"                        # "agents"
-          env-slug: "dev"
-
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v3
-        env:
-          GITHUB_APP_AGENT_HELPER_CLIENT_ID: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
-          GITHUB_APP_AGENT_HELPER_PRIVATE_KEY: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
-        with:
-          client-id: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
-          private-key: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
-
-      - name: Checkout repository
-        uses: actions/checkout@v5
-        with:
-          token: ${{ steps.app-token.outputs.token }}
+      - name: Authenticate
+        id: authenticate
+        uses: ./.github/actions/authenticate
 
       - name: Checkout issue branch if it exists
         id: checkout-issue-branch
@@ -304,8 +232,6 @@ jobs:
         uses: ./.github/actions/set-up-deepseek-via-pi
         env:
           DEEPSEEK_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
-        with:
-          api-key: ${{ env.DEEPSEEK_API_KEY }}
 
       - name: Classify response
         id: classify-response
@@ -345,9 +271,11 @@ jobs:
           # Use a random delimiter so a model response containing a line that
           # reads "EOF" cannot truncate the multi-line output value.
           DELIM="GHA_EOF_$RANDOM"
-          echo "extra-information-required<<${DELIM}" >> "$GITHUB_OUTPUT"
-          echo "${EXTRA_INFORMATION_REQUIRED}" >> "$GITHUB_OUTPUT"
-          echo "${DELIM}" >> "$GITHUB_OUTPUT"
+          {
+            echo "extra-information-required<<${DELIM}"
+            echo "${EXTRA_INFORMATION_REQUIRED}"
+            echo "${DELIM}"
+          } >> "$GITHUB_OUTPUT"
 
 # Already addressed
       - name: Reply as already addressed
@@ -388,7 +316,7 @@ jobs:
           comment-id: ${{ github.event.comment.id }}
           issue-number: ${{ github.event.issue.number }}
           reaction: 'confused'
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.authenticate.outputs.token }}
       - name: Ask for required information
         if: steps.save-response-type.outputs.response-type == 'REQUIRES_MORE_INFORMATION'
         uses: actions/github-script@v9
@@ -427,7 +355,7 @@ jobs:
           comment-id: ${{ github.event.comment.id }}
           issue-number: ${{ github.event.issue.number }}
           reaction: '+1'
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.authenticate.outputs.token }}
       - name: Ensure issue branch
         if: (steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY')
         uses: ./.github/actions/checkout-branch
@@ -462,9 +390,11 @@ jobs:
           # Use a random delimiter so a summary containing a line that reads
           # "EOF" cannot truncate the multi-line output value.
           DELIM="GHA_EOF_$RANDOM"
-          echo "summary<<${DELIM}" >> "$GITHUB_OUTPUT"
-          echo "${SUMMARY}" >> "$GITHUB_OUTPUT"
-          echo "${DELIM}" >> "$GITHUB_OUTPUT"
+          {
+            echo "summary<<${DELIM}"
+            echo "${SUMMARY}"
+            echo "${DELIM}"
+          } >> "$GITHUB_OUTPUT"
       - name: Check for code changes
         id: check-for-code-changes
         if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
@@ -516,19 +446,22 @@ jobs:
         id: raise-pr
         if: (steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY') && (steps.check-for-code-changes.outputs.has-changes == 'true')
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.authenticate.outputs.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_IS_PR: ${{ github.event.issue.pull_request != null }}
         run: |
-          # Write title and body to temporary files to handle quotes and backticks.
-          # Use a random, quoted delimiter so a summary containing "EOF" or
-          # shell metacharacters cannot break the heredoc.
-          # When the request came from a comment on a pull request, reference
-          # rather than "close" it: the number refers to a PR, not an issue.
-          if [ "${{ github.event.issue.pull_request != null }}" == "true" ]; then
+          # Write title and body to temporary files to handle quotes and backticks
+          # Use a random, quoted delimiter so a summary containing "EOF" or shell metacharacters cannot break the heredoc
+          # Event data is passed via environment variables so an issue title containing shell metacharacters cannot be injected into the script
+          # When the request came from a comment on a pull request, reference rather than "close" it: the number refers to a PR, not an issue
+          if [ "${ISSUE_IS_PR}" == "true" ]; then
             REFERENCE="Addresses"
           else
             REFERENCE="Closes"
           fi
-          echo "${REFERENCE} #${{ github.event.issue.number }} ${{ github.event.issue.title }}" > /tmp/pr_title.txt
+          printf '%s #%s %s\n' "${REFERENCE}" "${ISSUE_NUMBER}" "${ISSUE_TITLE}" > /tmp/pr_title.txt
+          # shellcheck disable=SC2034 # PR_BODY_DELIM is used as the heredoc delimiter below
           PR_BODY_DELIM="PR_BODY_EOF_$RANDOM"
           cat > /tmp/pr_body.txt << "$PR_BODY_DELIM"
           ${{ steps.save-address-issue-summary.outputs.summary }}
@@ -569,8 +502,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      issues: write
       actions: read
+      issues: write
     steps:
       - name: Comment failure details on the issue
         uses: actions/github-script@v9

@@ -1,0 +1,31 @@
+name: "Authenticate"
+description: Fetch secrets from Infisical via OIDC, generate a GitHub App installation token and check out the repository using that token
+outputs:
+  token:
+    description: "GitHub App installation token"
+    value: ${{ steps.app-token.outputs.token }}
+runs:
+  using: "composite"
+  steps:
+    - name: Get secrets
+      uses: Infisical/secrets-action@v1.0.16
+      with:
+        method: "oidc"
+        identity-id: "29578305-c46a-4ccd-a428-549edac4c3a2" # "c603d49b-292c-42ae-b838-52e03e3c3a84"
+        project-slug: "agent-editor"                        # "agents"
+        env-slug: "dev"
+
+    - name: Generate GitHub App token
+      id: app-token
+      uses: actions/create-github-app-token@v3
+      env:
+        GITHUB_APP_AGENT_HELPER_CLIENT_ID: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
+        GITHUB_APP_AGENT_HELPER_PRIVATE_KEY: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
+      with:
+        client-id: ${{ env.GITHUB_APP_AGENT_HELPER_CLIENT_ID }}
+        private-key: ${{ env.GITHUB_APP_AGENT_HELPER_PRIVATE_KEY }}
+
+    - name: Checkout repository
+      uses: actions/checkout@v5
+      with:
+        token: ${{ steps.app-token.outputs.token }}
