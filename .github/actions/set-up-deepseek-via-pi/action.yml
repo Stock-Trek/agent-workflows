@@ -2,8 +2,12 @@ name: "DeepSeek via pi"
 description: "Configure pi to connect to DeepSeek"
 inputs:
   api-key:
-    description: "DeepSeek API key"
-    required: true
+    description: >-
+      DeepSeek API key. Deprecated: pass the key via the DEEPSEEK_API_KEY
+      environment variable (set by the Infisical step) instead of as an input.
+      The input is kept for backwards compatibility with copies of this
+      workflow that still pass it; the environment variable takes precedence.
+    required: false
 runs:
   using: "composite"
   steps:
@@ -18,20 +22,35 @@ runs:
 
     - name: Configure DeepSeek as custom provider
       shell: bash
+      # The API key is normally read from the job environment (populated by the
+      # Infisical step). It is deliberately NOT passed as a `with:` input:
+      # input values are expanded into the workflow run page and logs, which
+      # could expose the key, and interpolating the key into a script/heredoc
+      # risks shell injection. Reading it from the environment and building the
+      # config with jq keeps it out of both.
+      env:
+        DEEPSEEK_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
       run: |
+        API_KEY="${DEEPSEEK_API_KEY:-${{ inputs.api-key }}}"
+        if [ -z "${API_KEY}" ]; then
+          echo "Error: DeepSeek API key is not set. Check the Infisical project configuration." >&2
+          exit 1
+        fi
         mkdir -p ~/.pi/agent
-        cat > ~/.pi/agent/models.json << 'EOF'
-        {
-          "providers": {
-            "deepseek": {
-              "baseUrl": "https://api.deepseek.com/v1",
-              "api": "openai-completions",
-              "apiKey": "${{ inputs.api-key }}",
-              "models": [
-                { "id": "deepseek-v4-flash" },
-                { "id": "deepseek-v4-pro" }
-              ]
+        jq -n \
+          --arg baseUrl "https://api.deepseek.com/v1" \
+          --arg api "openai-completions" \
+          --arg apiKey "${API_KEY}" \
+          '{
+            "providers": {
+              "deepseek": {
+                "baseUrl": $baseUrl,
+                "api": $api,
+                "apiKey": $apiKey,
+                "models": [
+                  { "id": "deepseek-v4-flash" },
+                  { "id": "deepseek-v4-pro" }
+                ]
+              }
             }
-          }
-        }
-        EOF
+          }' > ~/.pi/agent/models.json
