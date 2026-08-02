@@ -1,8 +1,10 @@
 # agent-workflows
 
-A GitHub Actions workflow that runs an AI coding agent (via [pi](https://www.npmjs.com/package/@mariozechner/pi-coding-agent)) on issues and PR comments. When someone mentions `@agent`, the workflow classifies the request, asks for any missing information, and - when it can - fixes the issue in code, opens a PR and replies on the issue.
+A GitHub Actions workflow that runs an AI coding agent (via [pi](https://www.npmjs.com/package/@mariozechner/pi-coding-agent)) on issues and PR comments.
+When someone mentions `@agent`, the workflow classifies the request, asks for any missing information, and - when it can - fixes the issue in code, opens a PR and replies on the issue.
 
-This repository is the canonical source for the workflow and is designed to be **copied into other repositories in the same organisation**. The [`copying.md`](./copying.md) file describes what to change when copying.
+This repository is the canonical source for the workflow and is designed to be copied into other repositories in the same organisation with minimal changes.
+The [`copying.md`](./copying.md) file describes what to change when copying.
 
 ## How it works
 
