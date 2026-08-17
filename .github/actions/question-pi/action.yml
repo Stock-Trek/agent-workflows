@@ -25,7 +25,10 @@ runs:
         SCHEMA=$(echo "${{ inputs.schema-base64 }}" | base64 -d)
         echo "${PROMPT}"
         echo "${SCHEMA}"
-        PI_PROMPT="${PROMPT}"$'\n\n'" <Start of context> ${CONTEXT} <End of context>"
+        # Split the prompt and the context across message roles: the prompt
+        # becomes the system message (appended to pi's default system prompt so
+        # the harness tool guidance is preserved) and the context becomes the
+        # user message.
         JSON_OUTPUT_FILE=$(mktemp)
         PI_RESPONSE=$(pi \
           --provider deepseek \
@@ -34,7 +37,8 @@ runs:
           --json-schema "${SCHEMA}" \
           --json-fallback force \
           --json-output "${JSON_OUTPUT_FILE}" \
-          --print "${PI_PROMPT}" \
+          --append-system-prompt "${PROMPT}" \
+          --print "<Start of context> ${CONTEXT} <End of context>" \
           )
         echo "${PI_RESPONSE}"
         if [ ! -s "${JSON_OUTPUT_FILE}" ]; then
