@@ -20,10 +20,6 @@ runs:
         CONTEXT=$(echo "${{ inputs.context-base64 }}" | base64 -d)
         PROMPT=$(echo "${{ inputs.prompt-base64 }}" | base64 -d)
         echo "${PROMPT}"
-        # Split the prompt and the context across message roles: the prompt
-        # becomes the system message (appended to pi's default system prompt so
-        # the harness tool guidance is preserved) and the context becomes the
-        # user message.
         PI_RESPONSE=$(pi \
           --provider deepseek \
           --model deepseek-v4-flash \
