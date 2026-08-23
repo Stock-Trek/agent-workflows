@@ -508,7 +508,10 @@ jobs:
         uses: actions/github-script@v9
         with:
           script: |
-            const body = ${{ toJson(steps.save-address-issue-summary.outputs.summary) }};
+            let body = ${{ toJson(steps.save-address-issue-summary.outputs.summary) }};
+            if (typeof body !== 'string' || body.trim() === '') {
+              body = "I have now addressed this, but no code changes were needed.";
+            }
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
