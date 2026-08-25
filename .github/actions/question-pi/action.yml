@@ -25,10 +25,7 @@ runs:
         SCHEMA=$(echo "${{ inputs.schema-base64 }}" | base64 -d)
         echo "${PROMPT}"
         echo "${SCHEMA}"
-        # Combine the prompt and the context into the user message: the prompt
-        # is part of the normal prompt rather than appended to pi's system
-        # prompt (which keeps the harness tool guidance intact).
-        MESSAGE=$(printf '%s\n\n%s' "${PROMPT}" "<Start of context> ${CONTEXT} <End of context>")
+        MESSAGE=$(printf '%s\n\n%s\n%s\n%s' "${PROMPT}" "<Start of context>" "${CONTEXT}" "<End of context>")
         JSON_OUTPUT_FILE=$(mktemp)
         PI_RESPONSE=$(pi \
           --provider deepseek \
