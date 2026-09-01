@@ -302,11 +302,6 @@ jobs:
           base: ${{ needs.triage.outputs.issue-branch-base }}
           create-if-not-exists: false
 
-      # Configure the git identity before the agent runs: the agent commits and
-      # pushes its own changes during the "Address issue" step, and git aborts
-      # with "empty ident name" if no identity is set. Setting it here (--global
-      # persists in ~/.gitconfig for the rest of the job) prevents the commit
-      # and push from failing.
       - name: Configure git identity
         run: |
           git config --global user.email "agent@stock-trek.com"
