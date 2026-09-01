@@ -302,11 +302,6 @@ jobs:
           base: ${{ needs.triage.outputs.issue-branch-base }}
           create-if-not-exists: false
 
-      - name: Configure git identity
-        run: |
-          git config --global user.email "agent@stock-trek.com"
-          git config --global user.name "Stock-Trek Agent"
-
       - name: Set up DeepSeek via pi
         uses: ./.github/actions/set-up-deepseek-via-pi
         env:
@@ -459,6 +454,10 @@ jobs:
       #     chmod 600 ~/.ssh/id_ed25519
       #     echo "${{ env.SHIPYARD_KNOWN_HOST }}" >> ~/.ssh/known_hosts
       #     ssh -T git@ssh.shipyard.rs
+      - name: Configure git identity
+        run: |
+          git config --global user.email "agent@stock-trek.com"
+          git config --global user.name "Stock-Trek Agent"
       - name: Address issue
         id: address-issue
         if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
@@ -520,8 +519,6 @@ jobs:
       - name: Commit and push code changes
         if: (steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY') && (steps.check-for-code-changes.outputs.has-changes == 'true')
         run: |
-          git config --global user.email "agent@stock-trek.com"
-          git config --global user.name "Stock-Trek Agent"
           git add .
           if ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
             git commit -m "Commit changes made by pi"
