@@ -50,8 +50,6 @@ runs:
           --print "${MESSAGE}" \
           )
         echo "${PI_RESPONSE}"
-        ls -lA ~/.pi/agent/
-        cat ~/.pi/agent/pi-json-tools.log
         if [ ! -s "${JSON_OUTPUT_FILE}" ]; then
           echo "Error: pi did not write a schema-validated JSON output to ${JSON_OUTPUT_FILE}" >&2
           exit 1
