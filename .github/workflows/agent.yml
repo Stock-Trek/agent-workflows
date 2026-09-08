@@ -686,10 +686,6 @@ jobs:
       actions: read
       issues: write
     steps:
-      - name: Debug
-        run: |
-          ls -lA ~/.pi/agent/
-          cat ~/.pi/agent/pi-json-tools.log
       - name: Comment failure details on the issue
         uses: actions/github-script@v9
         with:
