@@ -2,7 +2,16 @@
 
 A GitHub Actions workflow that runs an AI coding agent (via [pi](https://www.npmjs.com/package/@mariozechner/pi-coding-agent)) on issues and PR comments.
 When someone mentions `@agent`, the workflow classifies the request, asks for any missing information, and - when it can - fixes the issue in code, opens a PR and replies on the issue.
-The model pi uses can be chosen per run by adding a `@model = "model-id"` tag to the same issue or comment that mentions `@agent`, e.g. `@agent @model = "deepseek-v4-pro"`. The id must be one of the models configured in the setup actions under [`.github/actions`](./.github/actions); an absent or unknown id silently falls back to the default model (`deepseek-v4-flash`).
+The model pi uses can be chosen per run by adding a `@model = "..."` tag to the same issue or comment that mentions `@agent`, e.g. `@agent @model = "pro"`. A model can be named by its full id, by the short key assigned to it in the setup actions under [`.github/actions`](./.github/actions), or by any unambiguous suffix of its id (e.g. the part after the last `/`), so long model names never need to be typed out. The configured models and their keys are:
+
+| Key | Full model id |
+| --- | --- |
+| `flash` (default) | `deepseek-v4-flash` |
+| `pro` | `deepseek-v4-pro` |
+| `glm` | `fireworks_ai/accounts/fireworks/models/glm-5p3-flash` |
+| `hy3` | `deepinfra/tencent/Hy3` |
+
+Matching is case-insensitive but must be unambiguous: an absent, unknown or ambiguous name silently falls back to the default model (`deepseek-v4-flash`).
 
 This repository is the canonical source for the workflow and is designed to be copied into other repositories in the same organisation with minimal changes.
 The [`copying.md`](./copying.md) file describes what to change when copying.
