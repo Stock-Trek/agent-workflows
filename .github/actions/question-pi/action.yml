@@ -40,10 +40,6 @@ runs:
         echo "model: ${MODEL}"
         MESSAGE=$(printf '%s\n\n%s\n%s\n%s' "${PROMPT}" "<Start of context>" "${CONTEXT}" "<End of context>")
         JSON_OUTPUT_FILE=$(mktemp)
-        # Disable errexit while pi runs: when pi fails (e.g. the JSON schema
-        # fallback could not extract JSON from the model response) it exits
-        # non-zero and we want to dump its logs below instead of aborting the
-        # step immediately.
         set +e
         PI_RESPONSE=$(pi \
           --provider "${PROVIDER}" \
@@ -59,10 +55,6 @@ runs:
         echo "${PI_RESPONSE}"
         if [ ${PI_EXIT} -ne 0 ] || [ ! -s "${JSON_OUTPUT_FILE}" ]; then
           echo "Error: pi exited with code ${PI_EXIT} without writing a schema-validated JSON output to ${JSON_OUTPUT_FILE}" >&2
-          # Debug: surface pi's state and logs so failures like
-          # "pi-json-schema: fallback failed - no JSON found in model response"
-          # can be investigated. `|| true` keeps a missing log file from
-          # masking the real error.
           ls -lA ~/.pi/agent/ >&2 || true
           cat ~/.pi/agent/pi-json-tools.log >&2 || true
           exit 1
