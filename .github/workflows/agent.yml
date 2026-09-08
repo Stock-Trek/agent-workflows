@@ -148,7 +148,7 @@ jobs:
         uses: ./.github/actions/set-up-pi-models
         env:
           DEEPSEEK_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
-          EDEN_AI_API_KEY: ${{ env.EDEN_AI_API_KEY }}
+          EDENAI_API_KEY: ${{ env.EDENAI_API_KEY }}
 
       - name: Save selected model
         id: save-model
@@ -359,7 +359,7 @@ jobs:
         uses: ./.github/actions/set-up-pi-models
         env:
           DEEPSEEK_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
-          EDEN_AI_API_KEY: ${{ env.EDEN_AI_API_KEY }}
+          EDENAI_API_KEY: ${{ env.EDENAI_API_KEY }}
 
       - name: Classify response
         id: classify-response

@@ -16,13 +16,13 @@ runs:
       shell: bash
       env:
         DEEPSEEK_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
-        EDEN_AI_API_KEY: ${{ env.EDEN_AI_API_KEY }}
+        EDENAI_API_KEY: ${{ env.EDENAI_API_KEY }}
       run: |
         if [ -z "${DEEPSEEK_API_KEY}" ]; then
           echo "Error: DeepSeek API key is not set. Check the Infisical project configuration." >&2
           exit 1
         fi
-        if [ -z "${EDEN_AI_API_KEY}" ]; then
+        if [ -z "${EDENAI_API_KEY}" ]; then
           echo "Error: Eden AI API key is not set. Check the Infisical project configuration." >&2
           exit 1
         fi
@@ -33,7 +33,7 @@ runs:
           --arg deepseekApiKey "${DEEPSEEK_API_KEY}" \
           --arg edenBaseUrl "https://api.edenai.run/v3" \
           --arg edenApi "openai-completions" \
-          --arg edenApiKey "${EDEN_AI_API_KEY}" \
+          --arg edenApiKey "${EDENAI_API_KEY}" \
           '{
             "providers": {
               "deepseek": {
