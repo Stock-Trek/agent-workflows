@@ -198,6 +198,13 @@ jobs:
             core.setOutput('provider', provider);
             core.setOutput('model', model);
 
+      - name: Debug Pi setup
+        run: |
+          pi --version > /tmp/pi-version.txt
+          pi list-extensions > /tmp/pi-extensions.txt
+          cat /tmp/pi-version.txt
+          cat /tmp/pi-extensions.txt
+
       - name: Classify request
         id: classify-request
         uses: ./.github/actions/question-pi
