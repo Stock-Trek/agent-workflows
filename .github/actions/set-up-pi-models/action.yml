@@ -32,7 +32,7 @@ runs:
           --arg deepseekApi "openai-completions" \
           --arg deepseekApiKey "${DEEPSEEK_API_KEY}" \
           --arg edenBaseUrl "https://api.edenai.run/v3" \
-          --arg edenApi "openai" \
+          --arg edenApi "openai-responses" \
           --arg edenApiKey "${EDENAI_API_KEY}" \
           '{
             "providers": {
