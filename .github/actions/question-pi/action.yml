@@ -38,7 +38,7 @@ runs:
         echo "${SCHEMA}"
         echo "provider: ${PROVIDER}"
         echo "model: ${MODEL}"
-        MESSAGE=$(printf '%s\n\n%s\n%s\n%s' "${PROMPT}" "<Start of context>" "${CONTEXT}" "<End of context>")
+        MESSAGE=$(printf '%s\n\n%s\n%s\n%s\n\n%s' "${PROMPT}" "<Start of context>" "${CONTEXT}" "<End of context>" "FINAL INSTRUCTION: You MUST call the json_output tool with the JSON object as the 'data' argument. Do NOT output any other text.")
         JSON_OUTPUT_FILE=$(mktemp)
         set +e
         PI_RESPONSE=$(pi \
