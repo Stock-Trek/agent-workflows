@@ -46,7 +46,6 @@ runs:
         echo "${PI_RESPONSE}"
         if [ ${PI_EXIT} -ne 0 ]; then
           echo "Error: pi exited with code ${PI_EXIT}" >&2
-          ls -lA ~/.pi/agent/ >&2 || true
           exit 1
         fi
         PI_RESPONSE_BASE64=$(echo "${PI_RESPONSE}" | base64 -w 0)
