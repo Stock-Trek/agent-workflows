@@ -690,6 +690,8 @@ jobs:
         uses: actions/github-script@v9
         with:
           script: |
+            ls -lA ~/.pi/agent/
+            cat ~/.pi/agent/pi-json-tools.log
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const issueNumber = context.issue.number;
