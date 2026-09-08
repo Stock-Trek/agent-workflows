@@ -198,14 +198,6 @@ jobs:
             core.setOutput('provider', provider);
             core.setOutput('model', model);
 
-      - name: Test invoke
-        uses: ./.github/actions/invoke-pi
-        with:
-          context-base64: ${{ steps.gather-context.outputs.context-base64 }}
-          prompt-base64: ${{ steps.prompts.outputs.classify-request-base64 }}
-          provider: ${{ steps.save-model.outputs.provider }}
-          model: ${{ steps.save-model.outputs.model }}
-
       - name: Classify request
         id: classify-request
         uses: ./.github/actions/question-pi
