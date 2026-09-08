@@ -127,17 +127,23 @@ jobs:
             )) {
               comments.push(...response.data);
             }
+            // Strip @agent and @model = "model-id" tags
+            const stripTags = (text) => (text || '')
+              .replace(/@model\s*=\s*["'][^"']+["']/g, '')
+              .replace(/@agent\b/g, '')
+              .replace(/\n{3,}/g, '\n\n')
+              .trim();
             // Only send the most recent comments to the model: the full history
             // of a long-lived issue can be huge (cost, tokens and job output
             // size), and older comments are rarely relevant.
             const history = comments.slice(-50).map(comment => ({
               author: comment.user.login,
               date: comment.created_at,
-              body: comment.body,
+              body: stripTags(comment.body),
             }));
             const issueContext = {
-              title: issue.title,
-              body: issue.body,
+              title: stripTags(issue.title),
+              body: stripTags(issue.body),
               history
             };
             const stringified = JSON.stringify(issueContext);
