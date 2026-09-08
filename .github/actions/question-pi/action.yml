@@ -22,6 +22,12 @@ outputs:
   response-base64:
     description: "Response json formatted in schema in base64"
     value: ${{ steps.pi-response.outputs.pi-response-base64 }}
+  provider-used:
+    description: "Provider that produced the response (differs from the requested provider when a fallback occurred)"
+    value: ${{ steps.pi-response.outputs.provider-used }}
+  model-used:
+    description: "Model that produced the response (differs from the requested model when a fallback occurred)"
+    value: ${{ steps.pi-response.outputs.model-used }}
 runs:
   using: "composite"
   steps:
@@ -39,21 +45,49 @@ runs:
         echo "provider: ${PROVIDER}"
         echo "model: ${MODEL}"
         MESSAGE=$(printf '%s\n\n%s\n%s\n%s' "${PROMPT}" "<Start of context>" "${CONTEXT}" "<End of context>")
+
+        # Some models - or the OpenAI-compatible gateways that serve them -
+        # never produce the schema-validated JSON this action needs: the model
+        # does not call the json_output tool and the fallback extraction finds
+        # no JSON either, so pi exits non-zero without writing an output file
+        # ("pi-json-schema: fallback failed - no JSON found in model response").
+        # Ask pi once with the requested model and, if that fails, retry the
+        # question with the default model so a model that cannot produce
+        # structured output no longer breaks the whole workflow run.
+        ask_pi() {
+          local provider="$1" model="$2" json_output="$3"
+          rm -f "${json_output}"
+          pi \
+            --provider "${provider}" \
+            --model "${model}" \
+            --tools read,bash,grep,find,ls,json_output \
+            --json-schema "${SCHEMA}" \
+            --json-fallback force \
+            --json-output "${json_output}" \
+            --print "${MESSAGE}"
+        }
+
+        DEFAULT_PROVIDER="deepseek"
+        DEFAULT_MODEL="deepseek-v4-flash"
         JSON_OUTPUT_FILE=$(mktemp)
-        PI_RESPONSE=$(pi \
-          --provider "${PROVIDER}" \
-          --model "${MODEL}" \
-          --tools read,bash,grep,find,ls,json_output \
-          --json-schema "${SCHEMA}" \
-          --json-fallback force \
-          --json-output "${JSON_OUTPUT_FILE}" \
-          --print "${MESSAGE}" \
-          )
-        echo "${PI_RESPONSE}"
-        if [ ! -s "${JSON_OUTPUT_FILE}" ]; then
-          echo "Error: pi did not write a schema-validated JSON output to ${JSON_OUTPUT_FILE}" >&2
-          exit 1
+        USED_PROVIDER="${PROVIDER}"
+        USED_MODEL="${MODEL}"
+        if ! ask_pi "${PROVIDER}" "${MODEL}" "${JSON_OUTPUT_FILE}" || [ ! -s "${JSON_OUTPUT_FILE}" ]; then
+          if [ "${PROVIDER}" = "${DEFAULT_PROVIDER}" ] && [ "${MODEL}" = "${DEFAULT_MODEL}" ]; then
+            echo "Error: pi did not write a schema-validated JSON output to ${JSON_OUTPUT_FILE}" >&2
+            exit 1
+          fi
+          echo "Warning: model ${PROVIDER}/${MODEL} did not produce a schema-validated JSON response; retrying with the default model ${DEFAULT_PROVIDER}/${DEFAULT_MODEL}" >&2
+          USED_PROVIDER="${DEFAULT_PROVIDER}"
+          USED_MODEL="${DEFAULT_MODEL}"
+          JSON_OUTPUT_FILE=$(mktemp)
+          if ! ask_pi "${DEFAULT_PROVIDER}" "${DEFAULT_MODEL}" "${JSON_OUTPUT_FILE}" || [ ! -s "${JSON_OUTPUT_FILE}" ]; then
+            echo "Error: pi did not write a schema-validated JSON output to ${JSON_OUTPUT_FILE}" >&2
+            exit 1
+          fi
         fi
         PI_RESPONSE_BASE64=$(base64 -w 0 < "${JSON_OUTPUT_FILE}")
         rm -f "${JSON_OUTPUT_FILE}"
         echo "pi-response-base64=${PI_RESPONSE_BASE64}" >> "$GITHUB_OUTPUT"
+        echo "provider-used=${USED_PROVIDER}" >> "$GITHUB_OUTPUT"
+        echo "model-used=${USED_MODEL}" >> "$GITHUB_OUTPUT"

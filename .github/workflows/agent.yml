@@ -38,8 +38,8 @@ jobs:
       response-classification-base64: ${{ steps.schemas.outputs.response-classification-base64 }}
       issue-context-base64: ${{ steps.gather-context.outputs.context-base64 }}
       request-type: ${{ steps.save-request-type.outputs.request-type }}
-      provider: ${{ steps.save-model.outputs.provider }}
-      model: ${{ steps.save-model.outputs.model }}
+      provider: ${{ steps.save-effective-model.outputs.provider }}
+      model: ${{ steps.save-effective-model.outputs.model }}
     steps:
       - name: Infisical
         uses: Infisical/secrets-action@v1.0.16
@@ -207,6 +207,21 @@ jobs:
           schema-base64: ${{ steps.schemas.outputs.request-classification-base64 }}
           provider: ${{ steps.save-model.outputs.provider }}
           model: ${{ steps.save-model.outputs.model }}
+
+      - name: Save effective model
+        id: save-effective-model
+        env:
+          USED_PROVIDER: ${{ steps.classify-request.outputs.provider-used }}
+          USED_MODEL: ${{ steps.classify-request.outputs.model-used }}
+        run: |
+          # The model that actually answered the classification can differ from
+          # the one the user requested: when the requested model cannot produce
+          # schema-validated JSON, question-pi retries with the default model.
+          # Publish the effective model so every remaining step (classify
+          # response, ask for more information, address the issue) uses a model
+          # that is known to work instead of reusing the failed one.
+          echo "provider=${USED_PROVIDER}" >> "$GITHUB_OUTPUT"
+          echo "model=${USED_MODEL}" >> "$GITHUB_OUTPUT"
 
       - name: Save request type
         id: save-request-type
