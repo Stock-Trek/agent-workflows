@@ -127,11 +127,7 @@ jobs:
             )) {
               comments.push(...response.data);
             }
-            // The @agent mention and the @model = "model-id" tag are workflow
-            // directives, not part of the issue content, so strip them before
-            // sending anything to the model. Doing it here means every later
-            // model call (classify request/response, extra-information, address
-            // issue) sees the cleaned context.
+            // Strip @agent and @model = "model-id" tags
             const stripTags = (text) => (text || '')
               .replace(/@model\s*=\s*["'][^"']+["']/g, '')
               .replace(/@agent\b/g, '')
