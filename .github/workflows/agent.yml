@@ -161,17 +161,8 @@ jobs:
         uses: actions/github-script@v9
         with:
           script: |
-            // Allow the user to choose which model pi uses by adding a
-            // @model = "..." tag to the issue or comment that triggered this
-            // run (the same text that has to mention @agent). A model can be
-            // named by its full id, by the short key defined for it in the
-            // setup step (~/.pi/agent/models.json), or by any unambiguous
-            // suffix of its id (such as the part after the last "/"), so long
-            // model ids do not have to be typed out. Matching is
-            // case-insensitive. Resolve the tag against the providers
-            // configured by the preceding setup step, falling back to the
-            // default model when the tag is absent, ambiguous or names an
-            // unregistered model so a typo never breaks the run.
+            // A model can be named by: [full id, short key, any unambiguous suffix of its id]
+            // Matching is case-insensitive
             const fs = require('fs');
             const os = require('os');
             const path = require('path');
@@ -204,11 +195,8 @@ jobs:
                   }
                 }
                 const requestedLower = requested.toLowerCase();
-                // Try, in order: an exact full id, an exact short key, then a
-                // unique suffix of a full id (which also covers the part after
-                // the last "/"). A step only resolves when it matches exactly
-                // one model; several matches are ambiguous, so the request is
-                // treated as unknown and the default model is used.
+                // Try, in order: exact full id, exact short key, unique suffix of full id
+                // Only resolves when it matches exactly one model, default is deepseek-v4-flash
                 const findMatch = (criteria) => {
                   const hits = models.filter(criteria);
                   return hits.length === 1 ? hits[0] : null;
