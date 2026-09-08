@@ -1,0 +1,62 @@
+name: "Set up pi models"
+description: "Configure pi to connect to the DeepSeek and Eden AI providers"
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+
+    - name: Install pi-coding-agent and json-schema extension
+      shell: bash
+      run: |
+        bun install -g @earendil-works/pi-coding-agent
+        pi install npm:@nqbao/pi-json-schema
+
+    - name: Configure DeepSeek and Eden AI as custom providers
+      shell: bash
+      env:
+        DEEPSEEK_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
+        EDEN_AI_API_KEY: ${{ env.EDEN_AI_API_KEY }}
+      run: |
+        if [ -z "${DEEPSEEK_API_KEY}" ]; then
+          echo "Error: DeepSeek API key is not set. Check the Infisical project configuration." >&2
+          exit 1
+        fi
+        if [ -z "${EDEN_AI_API_KEY}" ]; then
+          echo "Error: Eden AI API key is not set. Check the Infisical project configuration." >&2
+          exit 1
+        fi
+        mkdir -p ~/.pi/agent
+        # Both providers expose OpenAI-compatible chat completions endpoints; pi
+        # appends "/chat/completions" to each provider's baseUrl. DeepSeek serves
+        # it under /v1, while Eden AI serves it under /v3. Eden AI model ids use
+        # its "provider/model" format (e.g. fireworks_ai/... and deepinfra/...).
+        jq -n \
+          --arg deepseekBaseUrl "https://api.deepseek.com/v1" \
+          --arg deepseekApi "openai-completions" \
+          --arg deepseekApiKey "${DEEPSEEK_API_KEY}" \
+          --arg edenBaseUrl "https://api.edenai.run/v3" \
+          --arg edenApi "openai-completions" \
+          --arg edenApiKey "${EDEN_AI_API_KEY}" \
+          '{
+            "providers": {
+              "deepseek": {
+                "baseUrl": $deepseekBaseUrl,
+                "api": $deepseekApi,
+                "apiKey": $deepseekApiKey,
+                "models": [
+                  { "id": "deepseek-v4-flash" },
+                  { "id": "deepseek-v4-pro" }
+                ]
+              },
+              "eden": {
+                "baseUrl": $edenBaseUrl,
+                "api": $edenApi,
+                "apiKey": $edenApiKey,
+                "models": [
+                  { "id": "fireworks_ai/accounts/fireworks/models/glm-5p3-flash" },
+                  { "id": "deepinfra/tencent/Hy3" }
+                ]
+              }
+            }
+          }' > ~/.pi/agent/models.json

@@ -22,8 +22,8 @@ runs:
         echo "${PROMPT}"
         MESSAGE=$(printf '%s\n\n%s\n%s\n%s' "${PROMPT}" "<Start of context>" "${CONTEXT}" "<End of context>")
         PI_RESPONSE=$(pi \
-          --provider deepseek \
-          --model deepseek-v4-flash \
+          --provider eden \
+          --model fireworks_ai/accounts/fireworks/models/glm-5p3-flash \
           --tools read,write,edit,bash,grep,find,ls \
           --print "${MESSAGE}" \
           )
