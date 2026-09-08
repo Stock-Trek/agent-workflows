@@ -203,8 +203,8 @@ jobs:
         with:
           context-base64: ${{ steps.gather-context.outputs.context-base64 }}
           prompt-base64: ${{ steps.prompts.outputs.classify-request-base64 }}
-          provider: eden
-          model: openai/gpt-4o
+          provider: ${{ steps.save-model.outputs.provider }}
+          model: ${{ steps.save-model.outputs.model }}
 
       - name: Classify request
         id: classify-request
