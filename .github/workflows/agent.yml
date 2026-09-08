@@ -144,10 +144,11 @@ jobs:
             const context_base64 = Buffer.from(stringified).toString('base64');
             core.setOutput('context-base64', context_base64);
 
-      - name: Set up DeepSeek via pi
-        uses: ./.github/actions/set-up-deepseek-via-pi
+      - name: Set up pi models
+        uses: ./.github/actions/set-up-pi-models
         env:
           DEEPSEEK_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
+          EDEN_AI_API_KEY: ${{ env.EDEN_AI_API_KEY }}
 
       - name: Save selected model
         id: save-model
@@ -354,10 +355,11 @@ jobs:
           base: ${{ needs.triage.outputs.issue-branch-base }}
           create-if-not-exists: false
 
-      - name: Set up DeepSeek via pi
-        uses: ./.github/actions/set-up-deepseek-via-pi
+      - name: Set up pi models
+        uses: ./.github/actions/set-up-pi-models
         env:
           DEEPSEEK_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
+          EDEN_AI_API_KEY: ${{ env.EDEN_AI_API_KEY }}
 
       - name: Classify response
         id: classify-response
