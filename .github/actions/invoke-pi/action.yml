@@ -34,12 +34,20 @@ runs:
         echo "provider: ${PROVIDER}"
         echo "model: ${MODEL}"
         MESSAGE=$(printf '%s\n\n%s\n%s\n%s' "${PROMPT}" "<Start of context>" "${CONTEXT}" "<End of context>")
+        set +e
         PI_RESPONSE=$(pi \
           --provider "${PROVIDER}" \
           --model "${MODEL}" \
           --tools read,write,edit,bash,grep,find,ls \
           --print "${MESSAGE}" \
-          )
+        )
+        PI_EXIT=$?
+        set -e
         echo "${PI_RESPONSE}"
+        if [ ${PI_EXIT} -ne 0 ]; then
+          echo "Error: pi exited with code ${PI_EXIT}" >&2
+          ls -lA ~/.pi/agent/ >&2 || true
+          exit 1
+        fi
         PI_RESPONSE_BASE64=$(echo "${PI_RESPONSE}" | base64 -w 0)
         echo "pi-response-base64=${PI_RESPONSE_BASE64}" >> "$GITHUB_OUTPUT"

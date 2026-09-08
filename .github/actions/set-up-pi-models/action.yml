@@ -52,8 +52,7 @@ runs:
                 "models": [
                   { "id": "fireworks_ai/accounts/fireworks/models/glm-5p3-flash" },
                   { "id": "deepinfra/tencent/Hy3" },
-                  { "id": "openai/gpt-4o" },
-                  { "id": "anthropic/claude-sonnet-5" }
+                  { "id": "openai/gpt-4o" }
                 ]
               }
             }
