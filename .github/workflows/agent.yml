@@ -38,6 +38,8 @@ jobs:
       response-classification-base64: ${{ steps.schemas.outputs.response-classification-base64 }}
       issue-context-base64: ${{ steps.gather-context.outputs.context-base64 }}
       request-type: ${{ steps.save-request-type.outputs.request-type }}
+      provider: ${{ steps.save-model.outputs.provider }}
+      model: ${{ steps.save-model.outputs.model }}
     steps:
       - name: Infisical
         uses: Infisical/secrets-action@v1.0.16
@@ -147,6 +149,54 @@ jobs:
         env:
           DEEPSEEK_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
 
+      - name: Save selected model
+        id: save-model
+        uses: actions/github-script@v9
+        with:
+          script: |
+            // Allow the user to choose which model pi uses by adding a
+            // @model = "model-id" tag to the issue or comment that triggered
+            // this run (the same text that has to mention @agent). Resolve the
+            // tag against the providers configured by the preceding setup step
+            // (~/.pi/agent/models.json), falling back to the default model when
+            // the tag is absent or names an unregistered model id so a typo
+            // never breaks the run.
+            const fs = require('fs');
+            const os = require('os');
+            const path = require('path');
+
+            let text = '';
+            if (context.eventName === 'issue_comment') {
+              text = (context.payload.comment && context.payload.comment.body) || '';
+            } else {
+              const issue = context.payload.issue || {};
+              text = `${issue.title || ''}\n${issue.body || ''}`;
+            }
+            const match = text.match(/@model\s*=\s*["']([^"']+)["']/);
+            const requested = match ? match[1].trim() : '';
+
+            const DEFAULT_PROVIDER = 'deepseek';
+            const DEFAULT_MODEL = 'deepseek-v4-flash';
+            let provider = DEFAULT_PROVIDER;
+            let model = DEFAULT_MODEL;
+
+            const modelsPath = path.join(os.homedir(), '.pi', 'agent', 'models.json');
+            if (requested && fs.existsSync(modelsPath)) {
+              const providers = JSON.parse(fs.readFileSync(modelsPath, 'utf8')).providers || {};
+              for (const [name, config] of Object.entries(providers)) {
+                const ids = ((config && config.models) || []).map(entry => entry.id);
+                if (ids.includes(requested)) {
+                  provider = name;
+                  model = requested;
+                  break;
+                }
+              }
+            }
+            console.log(`Requested model: ${requested || '(none, using default)'}`);
+            console.log(`Using provider: ${provider}, model: ${model}`);
+            core.setOutput('provider', provider);
+            core.setOutput('model', model);
+
       - name: Classify request
         id: classify-request
         uses: ./.github/actions/question-pi
@@ -154,6 +204,8 @@ jobs:
           context-base64: ${{ steps.gather-context.outputs.context-base64 }}
           prompt-base64: ${{ steps.prompts.outputs.classify-request-base64 }}
           schema-base64: ${{ steps.schemas.outputs.request-classification-base64 }}
+          provider: ${{ steps.save-model.outputs.provider }}
+          model: ${{ steps.save-model.outputs.model }}
 
       - name: Save request type
         id: save-request-type
@@ -314,6 +366,8 @@ jobs:
           context-base64: ${{ needs.triage.outputs.issue-context-base64 }}
           prompt-base64: ${{ needs.triage.outputs.classify-response-base64 }}
           schema-base64: ${{ needs.triage.outputs.response-classification-base64 }}
+          provider: ${{ needs.triage.outputs.provider }}
+          model: ${{ needs.triage.outputs.model }}
       - name: Save response type
         id: save-response-type
         run: |
@@ -336,6 +390,8 @@ jobs:
           context-base64: ${{ needs.triage.outputs.issue-context-base64 }}
           prompt-base64: ${{ needs.triage.outputs.extra-information-required-base64 }}
           schema-base64: ${{ needs.triage.outputs.information-list-base64 }}
+          provider: ${{ needs.triage.outputs.provider }}
+          model: ${{ needs.triage.outputs.model }}
       - name: Save extra information required
         id: save-extra-information-required
         if: steps.save-response-type.outputs.response-type == 'REQUIRES_MORE_INFORMATION'
@@ -465,6 +521,8 @@ jobs:
         with:
           context-base64: ${{ needs.triage.outputs.issue-context-base64 }}
           prompt-base64: ${{ needs.triage.outputs.address-issue-base64 }}
+          provider: ${{ needs.triage.outputs.provider }}
+          model: ${{ needs.triage.outputs.model }}
       - name: Save address response
         id: save-address-issue-summary
         if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
