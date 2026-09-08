@@ -27,6 +27,10 @@ runs:
           exit 1
         fi
         mkdir -p ~/.pi/agent
+        # Each model declares the full "id" pi needs to make API calls plus a
+        # short "key" that users can type after "@model = ..." in place of the
+        # (sometimes very long) id, e.g. "@model = \"glm\"" instead of the full
+        # fireworks path below. Keys must be unique across all providers.
         jq -n \
           --arg deepseekBaseUrl "https://api.deepseek.com/v1" \
           --arg deepseekApi "openai-completions" \
@@ -41,8 +45,8 @@ runs:
                 "api": $deepseekApi,
                 "apiKey": $deepseekApiKey,
                 "models": [
-                  { "id": "deepseek-v4-flash" },
-                  { "id": "deepseek-v4-pro" }
+                  { "id": "deepseek-v4-flash", "key": "flash" },
+                  { "id": "deepseek-v4-pro", "key": "pro" }
                 ]
               },
               "eden": {
@@ -50,8 +54,8 @@ runs:
                 "api": $edenApi,
                 "apiKey": $edenApiKey,
                 "models": [
-                  { "id": "fireworks_ai/accounts/fireworks/models/glm-5p3-flash" },
-                  { "id": "deepinfra/tencent/Hy3" }
+                  { "id": "fireworks_ai/accounts/fireworks/models/glm-5p3-flash", "key": "glm" },
+                  { "id": "deepinfra/tencent/Hy3", "key": "hy3" }
                 ]
               }
             }

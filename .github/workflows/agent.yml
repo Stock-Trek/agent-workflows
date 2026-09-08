@@ -156,12 +156,16 @@ jobs:
         with:
           script: |
             // Allow the user to choose which model pi uses by adding a
-            // @model = "model-id" tag to the issue or comment that triggered
-            // this run (the same text that has to mention @agent). Resolve the
-            // tag against the providers configured by the preceding setup step
-            // (~/.pi/agent/models.json), falling back to the default model when
-            // the tag is absent or names an unregistered model id so a typo
-            // never breaks the run.
+            // @model = "..." tag to the issue or comment that triggered this
+            // run (the same text that has to mention @agent). A model can be
+            // named by its full id, by the short key defined for it in the
+            // setup step (~/.pi/agent/models.json), or by any unambiguous
+            // suffix of its id (such as the part after the last "/"), so long
+            // model ids do not have to be typed out. Matching is
+            // case-insensitive. Resolve the tag against the providers
+            // configured by the preceding setup step, falling back to the
+            // default model when the tag is absent, ambiguous or names an
+            // unregistered model so a typo never breaks the run.
             const fs = require('fs');
             const os = require('os');
             const path = require('path');
@@ -181,15 +185,35 @@ jobs:
             let provider = DEFAULT_PROVIDER;
             let model = DEFAULT_MODEL;
 
-            const modelsPath = path.join(os.homedir(), '.pi', 'agent', 'models.json');
-            if (requested && fs.existsSync(modelsPath)) {
-              const providers = JSON.parse(fs.readFileSync(modelsPath, 'utf8')).providers || {};
-              for (const [name, config] of Object.entries(providers)) {
-                const ids = ((config && config.models) || []).map(entry => entry.id);
-                if (ids.includes(requested)) {
-                  provider = name;
-                  model = requested;
-                  break;
+            if (requested) {
+              const modelsPath = path.join(os.homedir(), '.pi', 'agent', 'models.json');
+              if (fs.existsSync(modelsPath)) {
+                const configured = JSON.parse(fs.readFileSync(modelsPath, 'utf8')).providers || {};
+                const models = [];
+                for (const [name, config] of Object.entries(configured)) {
+                  for (const entry of (config && config.models) || []) {
+                    if (entry && entry.id) {
+                      models.push({ provider: name, id: entry.id, key: (entry.key || '').toLowerCase() });
+                    }
+                  }
+                }
+                const requestedLower = requested.toLowerCase();
+                // Try, in order: an exact full id, an exact short key, then a
+                // unique suffix of a full id (which also covers the part after
+                // the last "/"). A step only resolves when it matches exactly
+                // one model; several matches are ambiguous, so the request is
+                // treated as unknown and the default model is used.
+                const findMatch = (criteria) => {
+                  const hits = models.filter(criteria);
+                  return hits.length === 1 ? hits[0] : null;
+                };
+                const selected =
+                  findMatch(m => m.id.toLowerCase() === requestedLower) ||
+                  findMatch(m => m.key && m.key === requestedLower) ||
+                  findMatch(m => m.id.toLowerCase().endsWith(requestedLower));
+                if (selected) {
+                  provider = selected.provider;
+                  model = selected.id;
                 }
               }
             }
