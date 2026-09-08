@@ -49,11 +49,11 @@ runs:
                 "baseUrl": $edenBaseUrl,
                 "api": $edenApi,
                 "apiKey": $edenApiKey,
-                "compat": true,
                 "models": [
                   { "id": "fireworks_ai/accounts/fireworks/models/glm-5p3-flash" },
                   { "id": "deepinfra/tencent/Hy3" },
-                  { "id": "openai/gpt-4o" }
+                  { "id": "openai/gpt-4o" },
+                  { "id": "anthropic/claude-sonnet-5" }
                 ]
               }
             }
