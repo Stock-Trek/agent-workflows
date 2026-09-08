@@ -22,20 +22,25 @@ runs:
           exit 1
         fi
         mkdir -p ~/.pi/agent
-        jq -n \
+        # Build the provider config and merge it into models.json (creating the
+        # file if it does not exist yet) so several setup actions can register
+        # providers alongside each other without clobbering one another.
+        PROVIDER_JSON=$(jq -n \
           --arg baseUrl "https://api.deepseek.com/v1" \
           --arg api "openai-completions" \
           --arg apiKey "${DEEPSEEK_API_KEY}" \
           '{
-            "providers": {
-              "deepseek": {
-                "baseUrl": $baseUrl,
-                "api": $api,
-                "apiKey": $apiKey,
-                "models": [
-                  { "id": "deepseek-v4-flash" },
-                  { "id": "deepseek-v4-pro" }
-                ]
-              }
-            }
-          }' > ~/.pi/agent/models.json
+            "baseUrl": $baseUrl,
+            "api": $api,
+            "apiKey": $apiKey,
+            "models": [
+              { "id": "deepseek-v4-flash" },
+              { "id": "deepseek-v4-pro" }
+            ]
+          }')
+        if [ -f ~/.pi/agent/models.json ]; then
+          jq --argjson provider "${PROVIDER_JSON}" '.providers.deepseek = $provider' ~/.pi/agent/models.json > ~/.pi/agent/models.json.tmp
+          mv ~/.pi/agent/models.json.tmp ~/.pi/agent/models.json
+        else
+          jq -n --argjson provider "${PROVIDER_JSON}" '{ "providers": { "deepseek": $provider } }' > ~/.pi/agent/models.json
+        fi

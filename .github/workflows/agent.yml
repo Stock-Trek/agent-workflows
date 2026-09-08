@@ -147,6 +147,11 @@ jobs:
         env:
           DEEPSEEK_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
 
+      - name: Set up Eden via pi
+        uses: ./.github/actions/set-up-eden-via-pi
+        env:
+          EDEN_AI_API_KEY: ${{ env.EDEN_AI_API_KEY }}
+
       - name: Classify request
         id: classify-request
         uses: ./.github/actions/question-pi
@@ -306,6 +311,11 @@ jobs:
         uses: ./.github/actions/set-up-deepseek-via-pi
         env:
           DEEPSEEK_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
+
+      - name: Set up Eden via pi
+        uses: ./.github/actions/set-up-eden-via-pi
+        env:
+          EDEN_AI_API_KEY: ${{ env.EDEN_AI_API_KEY }}
 
       - name: Classify response
         id: classify-response

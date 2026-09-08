@@ -1,0 +1,50 @@
+name: "Eden via pi"
+description: "Configure pi to connect to Eden AI"
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+
+    - name: Install pi-coding-agent and json-schema extension
+      shell: bash
+      run: |
+        bun install -g @earendil-works/pi-coding-agent
+        pi install npm:@nqbao/pi-json-schema
+
+    - name: Configure Eden as custom provider
+      shell: bash
+      env:
+        EDEN_AI_API_KEY: ${{ env.EDEN_AI_API_KEY }}
+      run: |
+        if [ -z "${EDEN_AI_API_KEY}" ]; then
+          echo "Error: Eden AI API key is not set. Check the Infisical project configuration." >&2
+          exit 1
+        fi
+        mkdir -p ~/.pi/agent
+        # Eden AI exposes an OpenAI-compatible chat completions endpoint at
+        # https://api.edenai.run/v3/chat/completions; pi appends
+        # "/chat/completions" to the baseUrl, so use "https://api.edenai.run/v3".
+        # Model ids use Eden AI's "provider/model" format.
+        # Build the provider config and merge it into models.json (creating the
+        # file if it does not exist yet) so several setup actions can register
+        # providers alongside each other without clobbering one another.
+        PROVIDER_JSON=$(jq -n \
+          --arg baseUrl "https://api.edenai.run/v3" \
+          --arg api "openai-completions" \
+          --arg apiKey "${EDEN_AI_API_KEY}" \
+          '{
+            "baseUrl": $baseUrl,
+            "api": $api,
+            "apiKey": $apiKey,
+            "models": [
+              { "id": "fireworks_ai/accounts/fireworks/models/glm-5p3-flash" },
+              { "id": "deepinfra/tencent/Hy3" }
+            ]
+          }')
+        if [ -f ~/.pi/agent/models.json ]; then
+          jq --argjson provider "${PROVIDER_JSON}" '.providers.eden = $provider' ~/.pi/agent/models.json > ~/.pi/agent/models.json.tmp
+          mv ~/.pi/agent/models.json.tmp ~/.pi/agent/models.json
+        else
+          jq -n --argjson provider "${PROVIDER_JSON}" '{ "providers": { "eden": $provider } }' > ~/.pi/agent/models.json
+        fi
