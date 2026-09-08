@@ -17,6 +17,7 @@ runs:
         # Best-effort cleanup: never fail the workflow because a reaction could
         # not be listed or removed (e.g. the resource no longer exists or the
         # API returns an error). Only clean up reactions we can actually list.
+        set +e
         LIST_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/comments/${{ inputs.comment-id }}/reactions"
         BODY_FILE=$(mktemp)
         HTTP_CODE=$(curl -s -L -o "${BODY_FILE}" -w '%{http_code}' \
@@ -27,6 +28,7 @@ runs:
         if [ "${HTTP_CODE}" != "200" ]; then
           echo "Skipping cleanup: could not list reactions (HTTP ${HTTP_CODE})"
           rm -f "${BODY_FILE}"
+          set -e
           exit 0
         fi
         REACTION_IDS=$(jq -r '.[] | .id' "${BODY_FILE}" 2>/dev/null)
@@ -40,6 +42,7 @@ runs:
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/comments/${{ inputs.comment-id }}/reactions/${id}")
           echo "Delete of reaction ${id} returned HTTP ${DELETE_CODE}"
         done <<< "${REACTION_IDS}"
+        set -e
         exit 0
     - shell: bash
       if: inputs.issue-number != ''
@@ -47,6 +50,7 @@ runs:
         # Best-effort cleanup: never fail the workflow because a reaction could
         # not be listed or removed (e.g. the resource no longer exists or the
         # API returns an error). Only clean up reactions we can actually list.
+        set +e
         LIST_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${{ inputs.issue-number }}/reactions"
         BODY_FILE=$(mktemp)
         HTTP_CODE=$(curl -s -L -o "${BODY_FILE}" -w '%{http_code}' \
@@ -57,6 +61,7 @@ runs:
         if [ "${HTTP_CODE}" != "200" ]; then
           echo "Skipping cleanup: could not list reactions (HTTP ${HTTP_CODE})"
           rm -f "${BODY_FILE}"
+          set -e
           exit 0
         fi
         REACTION_IDS=$(jq -r '.[] | .id' "${BODY_FILE}" 2>/dev/null)
@@ -70,4 +75,5 @@ runs:
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${{ inputs.issue-number }}/reactions/${id}")
           echo "Delete of reaction ${id} returned HTTP ${DELETE_CODE}"
         done <<< "${REACTION_IDS}"
+        set -e
         exit 0
