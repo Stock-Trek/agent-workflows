@@ -42,6 +42,7 @@ runs:
         JSON_OUTPUT_FILE=$(mktemp)
         set +e
         PI_RESPONSE=$(pi \
+          --debug \
           --provider "${PROVIDER}" \
           --model "${MODEL}" \
           --tools read,bash,grep,find,ls,json_output \

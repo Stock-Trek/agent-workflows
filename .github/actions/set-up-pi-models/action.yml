@@ -10,7 +10,7 @@ runs:
       shell: bash
       run: |
         bun install -g @earendil-works/pi-coding-agent
-        pi install npm:@nqbao/pi-json-schema --global
+        pi install npm:@nqbao/pi-json-schema
 
     - name: Configure custom providers and models
       shell: bash
