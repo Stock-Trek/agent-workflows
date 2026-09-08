@@ -198,6 +198,14 @@ jobs:
             core.setOutput('provider', provider);
             core.setOutput('model', model);
 
+      - name: Test invoke
+        uses: ./.github/actions/invoke-pi
+        with:
+          context-base64: ${{ steps.gather-context.outputs.context-base64 }}
+          prompt-base64: ${{ steps.prompts.outputs.classify-request-base64 }}
+          provider: eden
+          model: openai/gpt-4o
+
       - name: Classify request
         id: classify-request
         uses: ./.github/actions/question-pi
