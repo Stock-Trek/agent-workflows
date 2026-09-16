@@ -14,7 +14,7 @@ inputs:
   model:
     description: "Model to use for pi"
     required: false
-    default: deepseek-v4-flash
+    default: deepseek-flash
 outputs:
   response-base64:
     description: "Response json formatted in schema in base64"

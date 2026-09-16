@@ -45,7 +45,7 @@ runs:
                 "api": $deepseekApi,
                 "apiKey": $deepseekApiKey,
                 "models": [
-                  { "id": "deepseek-v4-flash", "key": "flash" },
+                  { "id": "deepseek-flash", "key": "flash" },
                   { "id": "deepseek-v4-pro", "key": "pro" }
                 ]
               },

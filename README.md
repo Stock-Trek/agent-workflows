@@ -6,12 +6,12 @@ The model pi uses can be chosen per run by adding a `@model = "..."` tag to the 
 
 | Key | Full model id |
 | --- | --- |
-| `flash` (default) | `deepseek-v4-flash` |
+| `flash` (default) | `deepseek-flash` |
 | `pro` | `deepseek-v4-pro` |
 | `glm` | `fireworks_ai/accounts/fireworks/models/glm-5p3-flash` |
 | `hy3` | `deepinfra/tencent/Hy3` |
 
-Matching is case-insensitive but must be unambiguous: an absent, unknown or ambiguous name silently falls back to the default model (`deepseek-v4-flash`).
+Matching is case-insensitive but must be unambiguous: an absent, unknown or ambiguous name silently falls back to the default model (`deepseek-flash`).
 
 This repository is the canonical source for the workflow and is designed to be copied into other repositories in the same organisation with minimal changes.
 The [`copying.md`](./copying.md) file describes what to change when copying.
