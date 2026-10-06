@@ -64,7 +64,7 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Remove all previous reactions from the comment or issue that triggered the workflow
+      - name: Remove previous reactions added by the app from the comment or issue that triggered the workflow
         uses: ./.github/actions/remove-emoji-reactions
         with:
           comment-id: ${{ github.event.comment.id }}
