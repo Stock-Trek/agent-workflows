@@ -746,7 +746,7 @@ jobs:
               }
             }
             body += `\nYou can find the full logs [here](${run.html_url}).\n`;
-            body += "\nIf you'd like me to try again, please add a comment mentioning @agent.";
+            body += "\nIf you'd like me to try again, please add a comment mentioning '@ agent' (no space).";
 
             await github.rest.issues.createComment({
               owner,
