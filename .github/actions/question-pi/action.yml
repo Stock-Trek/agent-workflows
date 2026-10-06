@@ -45,7 +45,7 @@ runs:
           --provider "${PROVIDER}" \
           --model "${MODEL}" \
           --no-approve \
-          --tools json_output \
+          --tools read,grep,find,ls,json_output \
           --json-schema "${SCHEMA}" \
           --json-fallback force \
           --json-output "${JSON_OUTPUT_FILE}" \
