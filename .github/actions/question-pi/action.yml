@@ -41,10 +41,11 @@ runs:
         MESSAGE=$(printf '%s\n\n%s\n%s\n%s\n\n%s' "${PROMPT}" "<Start of context>" "${CONTEXT}" "<End of context>" "FINAL INSTRUCTION: You MUST call the json_output tool with the JSON object as the 'data' argument. Do NOT output any other text.")
         JSON_OUTPUT_FILE=$(mktemp)
         set +e
-        PI_RESPONSE=$(pi \
+        PI_RESPONSE=$(env -i HOME="$HOME" PATH="$PATH" TERM=dumb pi \
           --provider "${PROVIDER}" \
           --model "${MODEL}" \
-          --tools read,bash,grep,find,ls,json_output \
+          --no-approve \
+          --tools json_output \
           --json-schema "${SCHEMA}" \
           --json-fallback force \
           --json-output "${JSON_OUTPUT_FILE}" \
