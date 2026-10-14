@@ -37,6 +37,28 @@ runs:
         RESPONSE_FILE=$(mktemp)
         echo "response-file=${RESPONSE_FILE}" >> "$GITHUB_OUTPUT"
 
+        # Stage only the selected provider's key in a short-lived file. Pi reads
+        # it through the credential command configured by set-up-pi-models,
+        # which deletes the file as soon as it has read it. Creating only the
+        # selected provider's file also means the other provider's key never
+        # exists on disk during the agent run.
+        case "${PROVIDER}" in
+          deepseek) PI_KEY="${DEEPSEEK_API_KEY}" ;;
+          eden) PI_KEY="${EDENAI_API_KEY}" ;;
+          *)
+            echo "Error: unknown provider '${PROVIDER}'" >&2
+            exit 1
+            ;;
+        esac
+        if [ -z "${PI_KEY}" ]; then
+          echo "Error: API key for provider '${PROVIDER}' is not set" >&2
+          exit 1
+        fi
+        mkdir -p "${HOME}/.pi/agent"
+        chmod 700 "${HOME}/.pi/agent"
+        umask 077
+        printf '%s' "${PI_KEY}" > "${HOME}/.pi/agent/.${PROVIDER}-key"
+
         # The job holds a GitHub write token and Infisical secrets. Remove
         # the runner's persisted command files (which contain exported
         # secrets and the token) and the git credential so the agent cannot

@@ -56,6 +56,7 @@ issue / PR comment mentioning @agent
 Key design properties:
 
 - **Serialised per issue** A `concurrency` group per issue prevents two `@agent` mentions (or an edit re-trigger) from racing on the same branch.
+- **Credentials are never readable by the agent** Provider API keys are stored only in short-lived files that pi's credential command deletes as soon as it reads them, and the agent runs with a scrubbed environment, so a prompt injection in issue text cannot read or exfiltrate them.
 - **Schema-validated model output** Every model call is constrained by a JSON schema, with a hard-coded fallback so users always get a visible reply instead of a silent no-op.
 - **Re-runnable** Existing issue branches and open PRs are reused, and a failure comment tells the user to mention `@agent` again.
 - **PR comments are supported** A comment on a PR is handled the same way as an issue comment (the PR is "addressed" rather than "closed").
