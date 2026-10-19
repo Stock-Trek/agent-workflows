@@ -67,27 +67,19 @@ runs:
         umask 077
         printf '%s' "${PI_KEY}" > "${HOME}/.pi/agent/.${PROVIDER}-key"
 
-        # The job holds a GitHub write token and Infisical secrets. Remove
-        # the runner's persisted command files (which contain exported
-        # secrets and the token) and the git credential so the agent cannot
-        # read them from disk. The runner keeps step outputs in memory, so
-        # later steps can still reference them.
-        CMDS_DIR="${RUNNER_TEMP}/_runner_file_commands"
-        if [ -d "${CMDS_DIR}" ]; then
-          for f in \
-            "${CMDS_DIR}"/set_env_* \
-            "${CMDS_DIR}"/set_output_* \
-            "${CMDS_DIR}"/save_state_*; do
-            case "$f" in
-              "${GITHUB_ENV}"|"${GITHUB_OUTPUT}"|"${GITHUB_STATE}")
-                continue
-                ;;
-            esac
-            rm -f "$f"
-          done
-        fi
-        git config --local --unset-all \
-          "http.https://github.com/.extraheader" 2>/dev/null || true
+        # The job holds Infisical secrets. Remove credentials from disk and
+        # clear the model/registry keys from the environment used by later
+        # steps. This is the last pi invocation, so they are not needed again.
+        bash .github/scripts/remove-credentials.sh
+        for name in \
+          DEEPSEEK_API_KEY \
+          EDENAI_API_KEY \
+          SHIPYARD_SSH_PRIVATE_KEY_CLIENT \
+          SHIPYARD_KNOWN_HOST; do
+          if [ -n "${!name:-}" ]; then
+            printf '%s=\n' "${name}" >> "${GITHUB_ENV}"
+          fi
+        done
 
         # Optionally give pi read-only access to Shipyard so it can fetch
         # private crates. The deploy key is loaded into a short-lived ssh-agent
@@ -150,8 +142,9 @@ runs:
           echo "Error: pi did not produce a response" >&2
           exit 1
         fi
-        PI_RESPONSE=$(cat "${RESPONSE_FILE}")
-        echo "${PI_RESPONSE}"
+        # Do not echo the model response: it is untrusted text and could
+        # contain secrets the agent encountered, which would then be readable
+        # in the workflow logs.
         PI_RESPONSE_BASE64=$(base64 -w 0 < "${RESPONSE_FILE}")
         rm -f "${RESPONSE_FILE}"
         echo "pi-response-base64=${PI_RESPONSE_BASE64}" >> "$GITHUB_OUTPUT"
