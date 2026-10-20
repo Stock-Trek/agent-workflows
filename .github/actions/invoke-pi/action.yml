@@ -71,21 +71,13 @@ runs:
         # clear the model/registry keys from the environment used by later
         # steps. This is the last pi invocation, so they are not needed again.
         bash .github/scripts/remove-credentials.sh
-        for name in \
-          DEEPSEEK_API_KEY \
-          EDENAI_API_KEY \
-          SHIPYARD_SSH_PRIVATE_KEY_CLIENT \
-          SHIPYARD_KNOWN_HOST; do
-          if [ -n "${!name:-}" ]; then
-            printf '%s=\n' "${name}" >> "${GITHUB_ENV}"
-          fi
-        done
 
-        # Optionally give pi read-only access to Shipyard so it can fetch
-        # private crates. The deploy key is loaded into a short-lived ssh-agent
-        # and is never written to disk; pi receives only the agent socket, so a
-        # prompt injection can use the key to fetch dependencies but cannot read
-        # or copy the key itself.
+        # Optional private crate registry access (for example Shipyard). The
+        # read-only deploy key is supplied as an input by the opt-in block in
+        # agent.yml. Load it into a short-lived ssh-agent only after the
+        # credential cleanup above; it is piped to ssh-add and never written to
+        # disk. The agent receives only the agent socket, so a prompt injection
+        # can use the key to fetch dependencies but cannot read or copy it.
         SSH_AUTH_SOCK_FOR_PI=""
         if [ -n "${SHIPYARD_SSH_PRIVATE_KEY:-}" ]; then
           if [ -z "${SHIPYARD_KNOWN_HOST:-}" ]; then
@@ -112,6 +104,17 @@ runs:
           SSH_AUTH_SOCK_FOR_PI="${SSH_AUTH_SOCK}"
         fi
 
+        # Clear model and registry credentials from the environment used by
+        # later steps. This is the last pi invocation, so they are not needed.
+        for name in \
+          DEEPSEEK_API_KEY \
+          EDENAI_API_KEY \
+          SHIPYARD_SSH_PRIVATE_KEY_CLIENT \
+          SHIPYARD_KNOWN_HOST; do
+          if [ -n "${!name:-}" ]; then
+            printf '%s=\n' "${name}" >> "${GITHUB_ENV}"
+          fi
+        done
         PI_ENV=(
           HOME="$HOME"
           PATH="$PATH"

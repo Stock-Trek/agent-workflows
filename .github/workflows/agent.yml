@@ -665,17 +665,54 @@ jobs:
           branch: ${{ needs.triage.outputs.issue-branch }}
           base: ${{ needs.triage.outputs.issue-branch-base }}
           create-if-not-exists: true
-      # Optional private crate registry access (for example Shipyard).
-      # If this repository pulls private crates, uncomment the two inputs on the
-      # "Address issue" step below. invoke-pi removes all other credentials,
-      # then loads the read-only deploy key into a short-lived ssh-agent without
-      # writing it to disk, so pi can use the key to fetch dependencies but
-      # cannot read or copy it. Do not add a step that writes the key to ~/.ssh:
-      # the agent has read/bash tools. See copying.md.
+      # Do not add a step here that writes a private registry key to ~/.ssh.
+      # invoke-pi removes ~/.ssh and other credential stores immediately
+      # before starting the agent. Repositories that need a private registry
+      # should uncomment the optional section below, which fetches a read-only
+      # deploy key only for the agent run. invoke-pi loads it into a short-lived
+      # ssh-agent without writing it to disk. The PR push below uses HTTPS with
+      # the GitHub App token, so no SSH key is restored after the agent has run.
+      # See copying.md.
       - name: Configure git identity
         run: |
           git config --global user.email "agent@stock-trek.com"
           git config --global user.name "Stock-Trek Agent"
+
+      # ---------------------------------------------------------------------
+      # Optional private crate registry access (for example Shipyard).
+      #
+      # When copying this workflow into a repository that pulls private crates
+      # from Shipyard, uncomment the two steps below. They fetch a read-only
+      # deploy key and its known-host entry only for the "Address issue" step.
+      # invoke-pi removes all other credentials, then loads the key from the
+      # step input into a short-lived ssh-agent without writing it to disk. The
+      # agent can use the key to fetch dependencies but cannot read or copy the
+      # private key itself. Use a read-only deploy key, never a personal key.
+      #
+      # If your secret names differ, update the secret-name values (see
+      # copying.md). Keep the `if:` condition so the key is only fetched when
+      # the agent is actually going to make changes.
+      # ---------------------------------------------------------------------
+      # - name: Fetch Shipyard read-only deploy key
+      #   if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
+      #   uses: Infisical/secrets-action@d2e351f16c6ca20d17c85e6c992e04bdeb64e87d # v1.0.18
+      #   with:
+      #     method: "oidc"
+      #     identity-id: "fafecebc-b41d-496d-915f-5ce536a6644b"
+      #     project-slug: "agent-editor"                        # "agents"
+      #     env-slug: "dev"
+      #     secret-name: "SHIPYARD_SSH_PRIVATE_KEY_CLIENT"
+      #
+      # - name: Fetch Shipyard known host
+      #   if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
+      #   uses: Infisical/secrets-action@d2e351f16c6ca20d17c85e6c992e04bdeb64e87d # v1.0.18
+      #   with:
+      #     method: "oidc"
+      #     identity-id: "fafecebc-b41d-496d-915f-5ce536a6644b"
+      #     project-slug: "agent-editor"                        # "agents"
+      #     env-slug: "dev"
+      #     secret-name: "SHIPYARD_KNOWN_HOST"
+
       - name: Address issue
         id: address-issue
         if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
@@ -685,10 +722,11 @@ jobs:
           prompt-base64: ${{ needs.triage.outputs.address-issue-base64 }}
           provider: ${{ needs.triage.outputs.provider }}
           model: ${{ needs.triage.outputs.model }}
-          # Uncomment these two lines to let the agent fetch private crates
-          # from Shipyard with a read-only deploy key:
-          # shipyard-ssh-private-key: ${{ env.SHIPYARD_SSH_PRIVATE_KEY_CLIENT }}
-          # shipyard-known-host: ${{ env.SHIPYARD_KNOWN_HOST }}
+          # These inputs are empty unless the optional Shipyard steps above are
+          # uncommented. invoke-pi loads the deploy key into a short-lived
+          # ssh-agent without writing it to disk.
+          shipyard-ssh-private-key: ${{ env.SHIPYARD_SSH_PRIVATE_KEY_CLIENT }}
+          shipyard-known-host: ${{ env.SHIPYARD_KNOWN_HOST }}
       - name: Save address response
         id: save-address-issue-summary
         if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'

@@ -25,5 +25,6 @@ To copy it to another repo, the agent workflow will need to be slightly modified
 
 The deploy workflow (`master.yml`) in repositories that use this agent should follow the same rule: do not
 write the registry private key before `cargo lambda build`. A `build.rs`, procedural macro or compromised
-dependency runs arbitrary code during the build and could exfiltrate it. Stage the key only for the step
-that needs it (or use short-lived registry credentials), and remove it immediately afterwards.
+dependency runs arbitrary code during the build and could exfiltrate it. Prefer short-lived registry
+credentials; otherwise load a read-only deploy key into a temporary ssh-agent only for the build step and
+remove it immediately afterwards (`ssh-agent -k`).
