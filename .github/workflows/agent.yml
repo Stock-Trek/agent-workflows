@@ -518,18 +518,12 @@ jobs:
           branch: ${{ needs.triage.outputs.issue-branch }}
           base: ${{ needs.triage.outputs.issue-branch-base }}
           create-if-not-exists: true
-      # - name: Set up shipyard ssh auth
-      #   if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
-      #   env:
-      #     SHIPYARD_KNOWN_HOST: ${{ env.SHIPYARD_KNOWN_HOST }}
-      #     SHIPYARD_SSH_PRIVATE_KEY_CLIENT: ${{ env.SHIPYARD_SSH_PRIVATE_KEY_CLIENT }}
-      #   run: |
-      #     mkdir -p ~/.ssh
-      #     chmod 700 ~/.ssh
-      #     printf '%s\n' "${{ env.SHIPYARD_SSH_PRIVATE_KEY_CLIENT }}" > ~/.ssh/id_ed25519
-      #     chmod 600 ~/.ssh/id_ed25519
-      #     echo "${{ env.SHIPYARD_KNOWN_HOST }}" >> ~/.ssh/known_hosts
-      #     ssh -T git@ssh.shipyard.rs
+      # Optional private crate registry access (for example Shipyard).
+      # If this repository pulls private crates, uncomment the two inputs on the
+      # "Address issue" step below. invoke-pi loads the read-only deploy key into
+      # a short-lived ssh-agent and never writes it to disk, so pi can use the
+      # key to fetch dependencies but cannot read or copy it. Do not add a step
+      # that writes the key to ~/.ssh: the agent has read/bash tools.
       - name: Configure git identity
         run: |
           git config --global user.email "agent@stock-trek.com"
@@ -543,6 +537,10 @@ jobs:
           prompt-base64: ${{ needs.triage.outputs.address-issue-base64 }}
           provider: ${{ needs.triage.outputs.provider }}
           model: ${{ needs.triage.outputs.model }}
+          # Uncomment these two lines to let the agent fetch private crates
+          # from Shipyard with a read-only deploy key:
+          # shipyard-ssh-private-key: ${{ env.SHIPYARD_SSH_PRIVATE_KEY_CLIENT }}
+          # shipyard-known-host: ${{ env.SHIPYARD_KNOWN_HOST }}
       - name: Save address response
         id: save-address-issue-summary
         if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
