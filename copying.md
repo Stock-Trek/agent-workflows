@@ -14,7 +14,7 @@ To copy it to another repo, the agent workflow will need to be slightly modified
    ever abused.
 5. Private registry access is opt-in. If the repository pulls private crates from Shipyard, uncomment
    the "Optional private crate registry access" steps in `workflows/agent.yml`, immediately before the
-   "Address issue" step. They fetch `SHIPYARD_CARGO_TOKEN_READONLY`, `SHIPYARD_SSH_PRIVATE_KEY_READONLY`
+   "Address issue" step. They fetch `CARGO_REGISTRIES_SHIPYARD_TOKEN`, `SHIPYARD_SSH_PRIVATE_KEY_READONLY`
    and `SHIPYARD_KNOWN_HOST` only for that run, then the `prefetch-cargo-deps` action runs
    `cargo fetch --locked` in a trusted step. Use a dedicated read-only registry token with the shortest
    practical expiry (never a write token or personal key) and a read-only deploy key scoped to the

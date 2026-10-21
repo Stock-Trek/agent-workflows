@@ -691,7 +691,7 @@ jobs:
       # environment or filesystem.
       #
       # Use a dedicated read-only registry token with the shortest practical
-      # expiry (SHIPYARD_CARGO_TOKEN_READONLY) and a read-only deploy key, never
+      # expiry (CARGO_REGISTRIES_SHIPYARD_TOKEN) and a read-only deploy key, never
       # a personal key. The prefetch action removes both from the environment
       # and shuts down its ssh-agent before the agent runs.
       #
@@ -710,7 +710,7 @@ jobs:
       #     identity-id: "fafecebc-b41d-496d-915f-5ce536a6644b"
       #     project-slug: "agents"
       #     env-slug: "dev"
-      #     secret-name: "SHIPYARD_CARGO_TOKEN_READONLY"
+      #     secret-name: "CARGO_REGISTRIES_SHIPYARD_TOKEN"
       #
       # - name: Fetch Shipyard read-only deploy key
       #   if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
@@ -736,7 +736,7 @@ jobs:
       #   if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
       #   uses: ./.github/actions/prefetch-cargo-deps
       #   with:
-      #     shipyard-cargo-token: ${{ env.SHIPYARD_CARGO_TOKEN_READONLY }}
+      #     shipyard-cargo-token: ${{ env.CARGO_REGISTRIES_SHIPYARD_TOKEN }}
       #     shipyard-ssh-private-key: ${{ env.SHIPYARD_SSH_PRIVATE_KEY_READONLY }}
       #     shipyard-known-host: ${{ env.SHIPYARD_KNOWN_HOST }}
 
