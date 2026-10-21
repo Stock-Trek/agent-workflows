@@ -13,7 +13,7 @@ To copy it to another repo, the agent workflow will need to be slightly modified
    ever abused.
 4. Private registry access is opt-in. If the repository pulls private crates from Shipyard, just uncomment
    the "Optional private crate registry access" steps in `workflows/agent.yml`, immediately before the
-   "Address issue" step. They fetch `SHIPYARD_SSH_PRIVATE_KEY_CLIENT` and `SHIPYARD_KNOWN_HOST` only for
+   "Address issue" step. They fetch `SHIPYARD_SSH_PRIVATE_KEY_READONLY` and `SHIPYARD_KNOWN_HOST` only for
    that step. Use a **read-only** deploy key scoped to the registry (never a personal key).
    `invoke-pi` removes all other credentials, loads the deploy key into a short-lived ssh-agent and never
    writes it to disk, so the agent can use the key to fetch dependencies but cannot read or copy the

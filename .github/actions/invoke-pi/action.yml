@@ -109,7 +109,7 @@ runs:
         for name in \
           DEEPSEEK_API_KEY \
           EDENAI_API_KEY \
-          SHIPYARD_SSH_PRIVATE_KEY_CLIENT \
+          SHIPYARD_SSH_PRIVATE_KEY_READONLY \
           SHIPYARD_KNOWN_HOST; do
           if [ -n "${!name:-}" ]; then
             printf '%s=\n' "${name}" >> "${GITHUB_ENV}"

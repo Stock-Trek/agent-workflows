@@ -699,9 +699,9 @@ jobs:
       #   with:
       #     method: "oidc"
       #     identity-id: "fafecebc-b41d-496d-915f-5ce536a6644b"
-      #     project-slug: "agent-editor"                        # "agents"
+      #     project-slug: "agents"
       #     env-slug: "dev"
-      #     secret-name: "SHIPYARD_SSH_PRIVATE_KEY_CLIENT"
+      #     secret-name: "SHIPYARD_SSH_PRIVATE_KEY_READONLY"
       #
       # - name: Fetch Shipyard known host
       #   if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
@@ -709,13 +709,16 @@ jobs:
       #   with:
       #     method: "oidc"
       #     identity-id: "fafecebc-b41d-496d-915f-5ce536a6644b"
-      #     project-slug: "agent-editor"                        # "agents"
+      #     project-slug: "agents"
       #     env-slug: "dev"
       #     secret-name: "SHIPYARD_KNOWN_HOST"
 
       - name: Address issue
         id: address-issue
         if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
+        env:
+          SHIPYARD_SSH_PRIVATE_KEY_READONLY: ${{ env.SHIPYARD_SSH_PRIVATE_KEY_READONLY }}
+          SHIPYARD_KNOWN_HOST: ${{ env.SHIPYARD_KNOWN_HOST }}
         uses: ./.github/actions/invoke-pi
         with:
           context-base64: ${{ needs.triage.outputs.issue-context-base64 }}
@@ -725,7 +728,7 @@ jobs:
           # These inputs are empty unless the optional Shipyard steps above are
           # uncommented. invoke-pi loads the deploy key into a short-lived
           # ssh-agent without writing it to disk.
-          shipyard-ssh-private-key: ${{ env.SHIPYARD_SSH_PRIVATE_KEY_CLIENT }}
+          shipyard-ssh-private-key: ${{ env.SHIPYARD_SSH_PRIVATE_KEY_READONLY }}
           shipyard-known-host: ${{ env.SHIPYARD_KNOWN_HOST }}
       - name: Save address response
         id: save-address-issue-summary
