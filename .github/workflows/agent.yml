@@ -470,6 +470,7 @@ jobs:
           permission-contents: write
           permission-issues: write
           permission-pull-requests: write
+          permission-workflows: write # TODO remove this permission when copying
 
       - name: Remove GitHub App credentials from the environment
         run: |
