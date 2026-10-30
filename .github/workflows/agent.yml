@@ -764,46 +764,8 @@ jobs:
             printf '%s\n' "${SUMMARY}"
             printf '%s\n' "${DELIM}"
           } >> "$GITHUB_OUTPUT"
-      - name: Check for code changes
-        id: check-for-code-changes
-        if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
-        run: |
-          # quick local check: uncommitted changes made by the agent
-          if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
-            echo "has-changes=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          # slow network check: committed changes. The agent may commit (and
-          # even push) its own changes, so compare the branch tip against the
-          # BASE branch - never against the issue branch, which the agent may
-          # have just pushed to (comparing against it always shows no diff).
-          ISSUE_BRANCH_BASE="${{ needs.triage.outputs.issue-branch-base }}"
-          git fetch origin "$ISSUE_BRANCH_BASE" 2>/dev/null || true
-          REFERENCE=""
-          for CANDIDATE in "origin/$ISSUE_BRANCH_BASE" "$ISSUE_BRANCH_BASE"; do
-            if git rev-parse --verify --quiet "$CANDIDATE" >/dev/null 2>&1; then
-              REFERENCE="$CANDIDATE"
-              break
-            fi
-          done
-          if [ -n "$REFERENCE" ]; then
-            # If the commit count cannot be determined, be conservative and
-            # treat it as a change so the PR and links are not silently dropped.
-            COMMITS_AHEAD=$(git rev-list --count "$REFERENCE"..HEAD 2>/dev/null || echo 1)
-            if [ "${COMMITS_AHEAD}" -gt 0 ]; then
-              HAS_CHANGES=true
-            else
-              HAS_CHANGES=false
-            fi
-          else
-            # No base reference is available (e.g. the fetch failed or the base
-            # branch was renamed). Be conservative: report a change so the
-            # workflow still commits, raises a PR and posts the links.
-            HAS_CHANGES=true
-          fi
-          echo "has-changes=${HAS_CHANGES}" >> "$GITHUB_OUTPUT"
       - name: Commit code changes
-        if: (steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY') && (steps.check-for-code-changes.outputs.has-changes == 'true')
+        if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
         run: |
           # This step has no credentials in its environment: the App token is
           # only restored in the push step below. The agent controls the
@@ -824,6 +786,47 @@ jobs:
             /usr/bin/git -c core.hooksPath=/dev/null -c commit.gpgSign=false \
               commit -m "Commit changes made by pi"
           fi
+      - name: Check for code changes
+        id: check-for-code-changes
+        if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
+        run: |
+          # Only commits on this branch that are not on the base branch count
+          # as changes. Any uncommitted work was committed by the previous
+          # step, so a branch that is merely behind the base reports no
+          # changes.
+          ISSUE_BRANCH_BASE="${{ needs.triage.outputs.issue-branch-base }}"
+          # The default depth-1 checkout leaves the branch and the base as
+          # unrelated shallow roots. Without their shared history git counts
+          # the branch tip as ahead even when it has no commits of its own.
+          # Unshallow so the comparison only counts real branch commits.
+          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+            git fetch --unshallow origin "$ISSUE_BRANCH_BASE" \
+              2>/dev/null || true
+          fi
+          git fetch origin "$ISSUE_BRANCH_BASE" 2>/dev/null || true
+          REFERENCE=""
+          for CANDIDATE in "origin/$ISSUE_BRANCH_BASE" "$ISSUE_BRANCH_BASE"; do
+            if git rev-parse --verify --quiet "$CANDIDATE" >/dev/null 2>&1; then
+              REFERENCE="$CANDIDATE"
+              break
+            fi
+          done
+          if [ -n "$REFERENCE" ]; then
+            # If the commit count cannot be determined, be conservative and
+            # treat it as a change so the PR and links are not silently dropped.
+            COMMITS_AHEAD=$(git rev-list --count "$REFERENCE"..HEAD 2>/dev/null || echo 1)
+            if [ "${COMMITS_AHEAD}" -gt 0 ]; then
+              HAS_CHANGES=true
+            else
+              HAS_CHANGES=false
+            fi
+          else
+            # No base reference is available (e.g. the fetch failed or the base
+            # branch was renamed). Be conservative: report a change so the
+            # workflow still raises a PR and posts the links.
+            HAS_CHANGES=true
+          fi
+          echo "has-changes=${HAS_CHANGES}" >> "$GITHUB_OUTPUT"
       - name: Push code changes
         if: (steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY') && (steps.check-for-code-changes.outputs.has-changes == 'true')
         env:
