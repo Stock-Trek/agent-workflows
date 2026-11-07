@@ -753,6 +753,7 @@ jobs:
       # when the agent is actually going to make changes.
       # ---------------------------------------------------------------------
       # - name: Fetch Shipyard read-only registry token
+      #   timeout-minutes: 5
       #   if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
       #   uses: Infisical/secrets-action@d2e351f16c6ca20d17c85e6c992e04bdeb64e87d # v1.0.18
       #   with:
@@ -763,6 +764,7 @@ jobs:
       #     secret-name: "CARGO_REGISTRIES_SHIPYARD_TOKEN"
       #
       # - name: Fetch Shipyard read-only deploy key
+      #   timeout-minutes: 5
       #   if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
       #   uses: Infisical/secrets-action@d2e351f16c6ca20d17c85e6c992e04bdeb64e87d # v1.0.18
       #   with:
@@ -773,6 +775,7 @@ jobs:
       #     secret-name: "SHIPYARD_SSH_PRIVATE_KEY_READONLY"
       #
       # - name: Fetch Shipyard known host
+      #   timeout-minutes: 5
       #   if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
       #   uses: Infisical/secrets-action@d2e351f16c6ca20d17c85e6c992e04bdeb64e87d # v1.0.18
       #   with:
@@ -783,8 +786,13 @@ jobs:
       #     secret-name: "SHIPYARD_KNOWN_HOST"
       #
       # - name: Prefetch cargo dependencies
+      #   timeout-minutes: 20
       #   if: steps.save-response-type.outputs.response-type == 'CAN_ADDRESS_FULLY'
       #   uses: ./.github/actions/prefetch-cargo-deps
+      #   env:
+      #     CARGO_REGISTRIES_SHIPYARD_TOKEN: ${{ env.CARGO_REGISTRIES_SHIPYARD_TOKEN }}
+      #     SHIPYARD_SSH_PRIVATE_KEY_READONLY: ${{ env.SHIPYARD_SSH_PRIVATE_KEY_READONLY }}
+      #     SHIPYARD_KNOWN_HOST: ${{ env.SHIPYARD_KNOWN_HOST }}
       #   with:
       #     shipyard-cargo-token: ${{ env.CARGO_REGISTRIES_SHIPYARD_TOKEN }}
       #     shipyard-ssh-private-key: ${{ env.SHIPYARD_SSH_PRIVATE_KEY_READONLY }}
